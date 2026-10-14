@@ -1,0 +1,7 @@
+/dist/
+/payload/
+*.exe
+*.exe~
+*.log
+*.dpapi
+/.cache/
