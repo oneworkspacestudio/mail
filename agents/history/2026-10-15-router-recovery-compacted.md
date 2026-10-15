@@ -112,3 +112,20 @@ explicit identity text; status tests and JS syntax also pass. Built/deployed Mai
 0.1.0-preview.15 locally. SHA256 48307fb53c764f883def141c119bd9de9978a8ff06ab2d015bc8ea659d7bffa7. Network/authentication validation unchanged.
 Google review request must be approved by the user before sending on their behalf;
 no request submitted yet. Clearing Safe Browsing remains Google's decision.
+
+## Final browser result and Google submission
+User explicitly approved sending the prepared public-URL report to Google. The
+Safe Browsing report-error UI confirmed 'Submission was successful'. No sign-in
+codes/state or private message content were submitted. No case ID or Google review
+decision was returned. Confirmation screenshot is outside Git at
+C:/Projects/artifacts/mail-repair-20261015/google-review-submitted.jpg.
+
+After the legitimate branding remediation, a fresh normal Chrome MyAccounts login
+completed and opened the Mail15 inbox without bypassing any warning or changing
+browser protection. Existing Gmail delivery tests were visible, including the
+30-minute lease-window receipt. Do not claim this proves global delisting or that
+the logo definitively caused the original warning. Google's review remains pending.
+The correct app entry page and confirmation are left open. Live anonymous updater
+downloaded Mail15 and verified the full Workspace16 catalog with its override
+(exit0, 48seconds). Node identity/status checks pass; public Mail15 digest and
+installed executable match. No firewall, authentication or hostname bypass used.
