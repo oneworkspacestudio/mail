@@ -1,4 +1,8 @@
-# <img src="workspace-mail/assets/mail.svg" alt="" width="42" height="42"> Mail
+<p align="center">
+  <img src="workspace-mail/assets/mail.svg" alt="Mail logo" width="112" height="112">
+</p>
+
+<h1 align="center">Mail</h1>
 
 **Your inbox, connected to One Workspace.**
 

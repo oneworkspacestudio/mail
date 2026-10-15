@@ -23,3 +23,11 @@ Release preparation/evidence outside Git: projects tooling workspace-release-202
 The suite handoff records the final publication receipt. Verify GitHub release
 state/assets and source tag before claiming publication. Never rewrite published
 tags/assets or use GitHub Actions for this release.
+
+## README logo visibility correction
+
+GitHub rendered the supplied SVGs, but inline40/42px title icons were easy to
+miss beside older screenshots. README now leads with a112px labelled logo.
+Workspace also has a current-logo overview and explicit organization repository
+links for every app. Documentation-only follow-up; published binaries/tags and
+current preview limitations are unchanged. No Actions or runtime tests needed.
