@@ -45,4 +45,31 @@ publication and the lease-duration observation completes.
 Final deployed build confirms public TCP25 reachable and both router hops renewed.
 Release workspace-mail-v0.1.0-preview.13 is being published from the matching
 source. Binary SHA256 4ab76b887b0d33aa9b2a6b062b8ccb4f00dc96a87f5fc282c2d81ec4b889a44e.
-Local go vet also passed. Lease-duration observation remains pending.
+Local go vet also passed. The final lease-duration result is recorded below.
+
+## Publication and extended verification
+Release workspace-mail-v0.1.0-preview.13 published with five verified assets at
+https://github.com/oneworkspacestudio/mail/releases/tag/workspace-mail-v0.1.0-preview.13
+Source commit f61a75c7; Actions disabled. Deployed Mail, suite bundle and public
+Mail release have the same SHA256 recorded above. A second authorized synthetic
+Gmail test was visibly received in the updated Mail UI after the final manager
+restart. Current source links point to the public organization. Fresh opt-in
+TestNativeMailboxProvisioning passed, including pre-login SMTP recipient routing,
+normal addresses, name collisions, reserved admin ownership, stable bindings and
+alias preservation. It used only disposable private NTFS data and loopback ports.
+Unit go test and vet passed. No clean-host/reboot/service acceptance claimed.
+
+One periodic third-party probe was inconclusive while public SMTP still responded;
+an independent probe connected from two external locations. Treat unverified as
+unknown, not proof the router failed. Never infer delivery from TCP alone.
+Final autonomous lease-duration observation completed successfully.
+
+Final observation: deployed Mail started at14:24:50 BST. No manual router
+mutation after deployment; observed automatic checks transition checking to
+reachable at14:45 and14:50. Observation ended14:55 with state reachable. A third
+authorized synthetic Gmail message then arrived in Mail at14:55:20 BST, confirmed
+by native delivery completion and the actual signed-in Mail UI. This exceeds the
+initial30-minute forwarding lease. Proof and monitor log are outside Git under
+C:/Projects/artifacts/mail-repair-20261015/ and the mail-inbound-fix staging dist.
+This validates the deployed network; unsupported routers/ISP blocks remain subject
+to the documented guidance. No firewall weakening or unrelated DNS changes.

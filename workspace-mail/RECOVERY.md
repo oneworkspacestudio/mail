@@ -62,7 +62,7 @@ setup links or message contents in a support report.
 
 Open Mail settings and review **Your Mail setup**. DNS and the web tunnel can be
 healthy while public SMTP is unreachable. Mail checks this separately and retries
-every five minutes; use the incoming connection retry control after a repair.
+every five minutes; choose **Retry automatic setup** after a network repair.
 
 On compatible routers, Mail maintains its leased TCP25 forwarding. For networks
 with two routers, it also renews verified upstream rules. If a router still lists
