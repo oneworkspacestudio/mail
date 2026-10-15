@@ -43,22 +43,54 @@ func (a *App) jmap(ctx context.Context, auth, method string, args any) (map[stri
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		if resp.StatusCode == 401 || resp.StatusCode == 403 || resp.StatusCode >= 500 {
+			return nil, engineAccessError(resp.StatusCode)
+		}
 		return nil, fmt.Errorf("Stalwart rejected the request (HTTP %d)", resp.StatusCode)
 	}
+	return parseJMAPResponse(method, io.LimitReader(resp.Body, 16<<20))
+}
+
+// Submission can emit an implicit Email/set response for onSuccessUpdateEmail.
+// Match our call, rather than treating the number of responses as success/failure.
+func parseJMAPResponse(method string, body io.Reader) (map[string]any, error) {
 	var out struct {
 		MethodResponses [][]json.RawMessage `json:"methodResponses"`
 	}
-	if e = json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&out); e != nil {
-		return nil, e
+	if e := json.NewDecoder(body).Decode(&out); e != nil {
+		return nil, unconfirmedJMAPResponse(method)
 	}
-	if len(out.MethodResponses) != 1 || len(out.MethodResponses[0]) < 2 {
-		return nil, errors.New("Unexpected Stalwart response")
+	var primary []json.RawMessage
+	var callErrors [][]json.RawMessage
+	for _, call := range out.MethodResponses {
+		if len(call) != 3 {
+			return nil, unconfirmedJMAPResponse(method)
+		}
+		var name, id string
+		if json.Unmarshal(call[0], &name) != nil || json.Unmarshal(call[2], &id) != nil {
+			return nil, unconfirmedJMAPResponse(method)
+		}
+		if id == "m" && name == "error" {
+			callErrors = append(callErrors, call)
+		}
+		if id == "m" && name == method {
+			if primary != nil {
+				return nil, unconfirmedJMAPResponse(method)
+			}
+			primary = call
+		}
+	}
+	if primary == nil && len(callErrors) == 1 {
+		primary = callErrors[0]
+	}
+	if primary == nil {
+		return nil, unconfirmedJMAPResponse(method)
 	}
 	var name string
-	_ = json.Unmarshal(out.MethodResponses[0][0], &name)
+	_ = json.Unmarshal(primary[0], &name)
 	var result map[string]any
-	if e = json.Unmarshal(out.MethodResponses[0][1], &result); e != nil {
-		return nil, e
+	if json.Unmarshal(primary[1], &result) != nil || result == nil {
+		return nil, unconfirmedJMAPResponse(method)
 	}
 	if name == "error" {
 		return nil, fmt.Errorf("%s: %v (%v)", method, result["type"], result["description"])
@@ -68,7 +100,33 @@ func (a *App) jmap(ctx context.Context, auth, method string, args any) (map[stri
 			return nil, fmt.Errorf("%s: %v", method, v)
 		}
 	}
+	if method == "EmailSubmission/set" {
+		for _, call := range out.MethodResponses {
+			var name string
+			_ = json.Unmarshal(call[0], &name)
+			if name != "Email/set" && name != "error" {
+				continue
+			}
+			var effect map[string]any
+			failed := json.Unmarshal(call[1], &effect) != nil || name == "error"
+			for _, key := range []string{"notCreated", "notUpdated", "notDestroyed"} {
+				if values, ok := effect[key].(map[string]any); ok && len(values) > 0 {
+					failed = true
+				}
+			}
+			if failed {
+				result["workspaceWarnings"] = []string{"Message queued, but its Sent-folder update failed. Refresh Mail; do not send it again."}
+			}
+		}
+	}
 	return result, nil
+}
+
+func unconfirmedJMAPResponse(method string) error {
+	if method == "EmailSubmission/set" {
+		return errors.New("Mail could not confirm the send result. Check Sent and refresh before trying again; sending again could create a duplicate.")
+	}
+	return fmt.Errorf("Mail could not confirm the %s result. Refresh Mail and try again.", method)
 }
 func (a *App) proxyJMAP(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.user(w, r)
@@ -82,6 +140,10 @@ func (a *App) proxyJMAP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			fail(w, engineAccessError(resp.StatusCode))
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(resp.StatusCode)
 		_, _ = io.Copy(w, io.LimitReader(resp.Body, 2<<20))

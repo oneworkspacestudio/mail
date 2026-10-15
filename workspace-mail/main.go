@@ -34,22 +34,26 @@ var bundled embed.FS
 var version = "0.1.0-preview.1"
 
 type Config struct {
-	Hostname      string `json:"hostname"`
-	Domain        string `json:"domain"`
-	Origin        string `json:"origin"`
-	Issuer        string `json:"issuer"`
-	ClientID      string `json:"clientId"`
-	ClientSecret  string `json:"clientSecret"`
-	OwnerSubject  string `json:"ownerSubject"`
-	EnginePort    int    `json:"enginePort"`
-	SMTPPort      int    `json:"smtpPort"`
-	OIDCClaim     string `json:"oidcClaim"`
-	Configured    bool   `json:"configured"`
-	RelayHost     string `json:"relayHost"`
-	RelayPort     int    `json:"relayPort"`
-	RelayUsername string `json:"relayUsername"`
-	RelaySecret   string `json:"relaySecret"`
-	EngineSchema  int    `json:"engineSchema"`
+	Hostname         string `json:"hostname"`
+	Domain           string `json:"domain"`
+	Origin           string `json:"origin"`
+	Issuer           string `json:"issuer"`
+	ClientID         string `json:"clientId"`
+	ClientSecret     string `json:"clientSecret"`
+	OwnerSubject     string `json:"ownerSubject"`
+	EnginePort       int    `json:"enginePort"`
+	SMTPPort         int    `json:"smtpPort"`
+	OIDCClaim        string `json:"oidcClaim"`
+	Configured       bool   `json:"configured"`
+	RelayHost        string `json:"relayHost"`
+	RelayPort        int    `json:"relayPort"`
+	RelayUsername    string `json:"relayUsername"`
+	RelaySecret      string `json:"relaySecret"`
+	EngineSchema     int    `json:"engineSchema"`
+	EngineHostname   string `json:"engineHostname,omitempty"`
+	AutomaticHosting bool   `json:"automaticHosting,omitempty"`
+	DNSZone          string `json:"dnsZone,omitempty"`
+	DNSToken         string `json:"dnsToken,omitempty"`
 }
 type Session struct {
 	Auth, Subject, Name, Email, CSRF string
@@ -59,20 +63,29 @@ type Session struct {
 	mu                               sync.Mutex
 }
 type App struct {
-	data, base string
-	port       int
-	mu         sync.RWMutex
-	cfg        Config
-	sessions   map[string]*Session
-	pending    map[string]Login
-	setupToken string
-	job        *platform.Job
-	engine     *exec.Cmd
-	held       *os.File
-	client     *http.Client
-	setupMu    sync.Mutex
-	engineDone chan struct{}
-	restarting bool
+	data, base                 string
+	port                       int
+	mu                         sync.RWMutex
+	cfg                        Config
+	sessions                   map[string]*Session
+	pending                    map[string]Login
+	setupToken                 string
+	job                        *platform.Job
+	engine                     *exec.Cmd
+	held                       *os.File
+	client                     *http.Client
+	setupMu                    sync.Mutex
+	provisionMu                sync.Mutex
+	provisionError             string
+	inboundState               string
+	inboundMessage             string
+	inboundRetry               chan struct{}
+	engineDone                 chan struct{}
+	restarting                 bool
+	hostingBusy                bool
+	hostingPhase, hostingError string
+	hostingIssue               *HostingIssue
+	identityError              string
 }
 
 func main() {
@@ -114,8 +127,8 @@ func main() {
 		log.Fatal(e)
 	}
 	defer job.Close()
-	app := &App{data: absolute, base: strings.TrimRight(*base, "/"), port: *port, sessions: map[string]*Session{}, pending: map[string]Login{}, job: job, client: &http.Client{Timeout: 45 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
-	app.cfg = Config{Hostname: "mail.m8e.co.uk", Domain: "mail.m8e.co.uk", Origin: fmt.Sprintf("http://localhost:%d", *port), EnginePort: *port + 1, SMTPPort: *port + 2, OIDCClaim: "sub"}
+	app := &App{data: absolute, base: strings.TrimRight(*base, "/"), port: *port, sessions: map[string]*Session{}, pending: map[string]Login{}, job: job, inboundRetry: make(chan struct{}, 1), client: &http.Client{Timeout: 45 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	app.cfg = Config{Hostname: "mail.example.com", Domain: "example.com", Origin: fmt.Sprintf("http://localhost:%d", *port), EnginePort: *port + 1, SMTPPort: *port + 2, OIDCClaim: "sub"}
 	if e = platform.LoadSecret(filepath.Join(absolute, "mail.dpapi"), &app.cfg); e != nil && !os.IsNotExist(e) {
 		log.Fatal("Cannot read protected Mail configuration: ", e)
 	}
@@ -134,6 +147,18 @@ func main() {
 			app.cfg.Origin = u.Scheme + "://" + u.Host
 		}
 	}
+	if domain := os.Getenv("WORKSPACE_MAIL_DOMAIN"); domain != "" && !app.cfg.Configured {
+		if !domainPattern.MatchString(domain) || len(domain) > 220 || app.cfg.Issuer == "" {
+			log.Fatal("Invalid managed Mail domain or missing MyAccounts connection")
+		}
+		u, _ := url.Parse(app.cfg.Origin)
+		app.cfg.Domain = domain
+		app.cfg.Hostname = u.Hostname()
+		app.cfg.EngineHostname = "smtp." + domain
+		app.cfg.AutomaticHosting = true
+		app.cfg.DNSZone = os.Getenv("WORKSPACE_MAIL_DNS_ZONE")
+		app.cfg.DNSToken = os.Getenv("WORKSPACE_MAIL_DNS_TOKEN")
+	}
 	app.setupToken = platform.Token()
 	if e = platform.SaveSecret(filepath.Join(absolute, "setup.dpapi"), map[string]string{"url": app.cfg.Origin + app.base + "/setup#" + app.setupToken}); e != nil {
 		log.Fatal(e)
@@ -142,20 +167,30 @@ func main() {
 		if e = app.startEngine(); e != nil {
 			log.Fatal(e)
 		}
-		if app.cfg.EngineSchema < 1 && app.cfg.Issuer != "" {
+		resumeCtx, resumeCancel := context.WithTimeout(context.Background(), 90*time.Second)
+		_, resumeErr := app.resumeMailDomainChange(resumeCtx)
+		resumeCancel()
+		if resumeErr != nil {
+			app.identityError = "Mail-domain change needs attention: " + resumeErr.Error()
+			log.Print(app.identityError)
+		}
+		if app.cfg.EngineSchema < 2 && app.cfg.Issuer != "" && app.identityError == "" {
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			e = app.configureIdentity(ctx)
 			cancel()
 			if e != nil {
-				log.Fatal("Cannot configure engine identity: ", e)
-			}
-			app.cfg.EngineSchema = 1
-			if e = platform.SaveSecret(filepath.Join(absolute, "mail.dpapi"), app.cfg); e != nil {
-				log.Fatal(e)
-			}
-			app.stopEngine()
-			if e = app.startEngine(); e != nil {
-				log.Fatal(e)
+				// Keep the recovery UI available if a custom policy needs an owner.
+				app.identityError = "Mailbox access setup needs attention: " + e.Error()
+				log.Print(app.identityError)
+			} else {
+				app.cfg.EngineSchema = 2
+				if e = platform.SaveSecret(filepath.Join(absolute, "mail.dpapi"), app.cfg); e != nil {
+					log.Fatal(e)
+				}
+				app.stopEngine()
+				if e = app.startEngine(); e != nil {
+					log.Fatal(e)
+				}
 			}
 		}
 	}
@@ -168,9 +203,14 @@ func main() {
 	})
 	mux.HandleFunc("GET /api/status", app.status)
 	mux.HandleFunc("POST /api/setup", app.setup)
+	mux.HandleFunc("POST /api/identity/repair", app.repairIdentity)
+	mux.HandleFunc("POST /api/mailboxes/provision", app.provisionMailboxes)
+	mux.HandleFunc("POST /api/hosting/subdomain/plan", app.planMailDomain)
+	mux.HandleFunc("POST /api/hosting/subdomain/apply", app.useMailDomain)
 	mux.HandleFunc("POST /api/dns/plan", app.dnsPlan)
 	mux.HandleFunc("POST /api/dns/apply", app.dnsApply)
 	mux.HandleFunc("POST /api/delivery", app.delivery)
+	mux.HandleFunc("POST /api/hosting/retry", app.retryHosting)
 	mux.HandleFunc("GET /auth/login", app.login)
 	mux.HandleFunc("GET /auth/callback", app.callback)
 	mux.HandleFunc("POST /auth/password", app.passwordLogin)
@@ -222,6 +262,10 @@ func main() {
 	server := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", *port), Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 << 10}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+	if app.cfg.AutomaticHosting && app.identityError == "" {
+		app.beginHosting(ctx)
+		go app.maintainInboundMail(ctx)
+	}
 	go func() { <-ctx.Done(); _ = server.Close() }()
 	log.Printf("Mail %s listening on http://localhost:%d%s/; setup link is protected in %s", version, *port, app.base, filepath.Join(absolute, "setup.dpapi"))
 	if !*noBrowser {
@@ -297,14 +341,18 @@ func (a *App) startEngineMode(recoveryMode bool) error {
 	c := a.cfg
 	cmd := exec.Command(path, "--config", filepath.Join(a.data, "engine.json"))
 	cmd.Dir = a.data
-	cmd.Env = append(os.Environ(), "STALWART_RECOVERY_ADMIN=admin:"+recovery["password"], "STALWART_RECOVERY_MODE_PORT="+strconv.Itoa(c.EnginePort), "STALWART_HOSTNAME="+c.Hostname, "STALWART_PUBLIC_URL="+fmt.Sprintf("http://127.0.0.1:%d", c.EnginePort))
+	engineHost := c.EngineHostname
+	if engineHost == "" {
+		engineHost = c.Hostname
+	}
+	cmd.Env = append(os.Environ(), "STALWART_RECOVERY_ADMIN=admin:"+recovery["password"], "STALWART_RECOVERY_MODE_PORT="+strconv.Itoa(c.EnginePort), "STALWART_HOSTNAME="+engineHost, "STALWART_PUBLIC_URL="+fmt.Sprintf("http://127.0.0.1:%d", c.EnginePort), "WORKSPACE_MAIL_DNS_TOKEN="+c.DNSToken)
 	cmd.Env = append(cmd.Env, "STALWART_RECOVERY_MODE="+strconv.FormatBool(recoveryMode))
 	logFile, e := os.OpenFile(filepath.Join(a.data, "engine.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if e != nil {
 		a.held.Close()
 		return e
 	}
-	filtered := &engineLog{out: logFile, secrets: []string{recovery["password"], c.ClientSecret, c.RelaySecret}}
+	filtered := &engineLog{out: logFile, secrets: []string{recovery["password"], c.ClientSecret, c.RelaySecret, c.DNSToken}}
 	cmd.Stdout = filtered
 	cmd.Stderr = filtered
 	if e = a.job.Start(cmd); e != nil {
@@ -338,6 +386,18 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 func fail(w http.ResponseWriter, e error) {
 	w.Header().Set("Content-Type", "application/json")
+	var access *MailAccessError
+	if errors.As(e, &access) {
+		w.WriteHeader(http.StatusBadGateway)
+		code := "mail_unavailable"
+		if access.Status == 401 {
+			code = "mail_identity_rejected"
+		} else if access.Status == 403 {
+			code = "mail_access_denied"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": e.Error(), "code": code})
+		return
+	}
 	w.WriteHeader(400)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": e.Error()})
 }

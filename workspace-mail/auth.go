@@ -96,11 +96,24 @@ func (a *App) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var claims struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Username string `json:"preferred_username"`
 	}
 	if e = verified.Claims(&claims); e != nil {
 		http.Error(w, "Identity claims rejected", 403)
+		return
+	}
+	if claims.Username == "" {
+		if info, err := p.UserInfo(ctx, oauth2.StaticTokenSource(token)); err == nil && info.Subject == verified.Subject {
+			_ = info.Claims(&claims)
+		}
+	}
+	if claims.Username == "" {
+		claims.Username = "user"
+	}
+	if _, err := a.ensureMailboxes(ctx, []MailboxUser{{Subject: verified.Subject, Username: claims.Username, Name: claims.Name}}); err != nil {
+		fail(w, errors.New("Your mailbox address could not be prepared: "+err.Error()))
 		return
 	}
 	session := &Session{Auth: "Bearer " + token.AccessToken, Subject: verified.Subject, Name: claims.Name, Email: claims.Email, CSRF: platform.Token(), Expires: time.Now().Add(8 * time.Hour), TokenExpiry: token.Expiry, RefreshToken: token.RefreshToken}
@@ -182,7 +195,7 @@ func (a *App) sessionInfo(w http.ResponseWriter, r *http.Request) {
 	a.mu.RLock()
 	c := a.cfg
 	a.mu.RUnlock()
-	writeJSON(w, map[string]any{"name": s.Name, "email": s.Email, "subject": s.Subject, "csrf": s.CSRF, "base": a.base, "owner": s.Subject == c.OwnerSubject, "domain": c.Domain, "version": version})
+	writeJSON(w, map[string]any{"name": s.Name, "email": s.Email, "mailAddress": a.mailboxAddress(s.Subject), "subject": s.Subject, "csrf": s.CSRF, "base": a.base, "owner": s.Subject == c.OwnerSubject, "domain": c.Domain, "version": version})
 }
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.user(w, r); !ok {

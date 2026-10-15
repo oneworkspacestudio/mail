@@ -2,7 +2,7 @@
 
 A native Windows mail app with a Gmail-style interface and a real Stalwart
 JMAP backend. Sign in with **MyAccounts**, use it independently, or add it to
-[One Workspace](https://github.com/fahimc/one-workspace).
+[One Workspace](https://github.com/oneworkspacestudio/one-workspace).
 
 ![Mail inbox and compose panel](docs/screenshots/mail-compose.jpg)
 
@@ -63,14 +63,27 @@ profile and email, and MyAccounts' existing sign-in session. Enter its issuer,
 client ID and secret in Mail's wizard. One Workspace registers and supplies
 these automatically.
 
-Mail uses the stable OIDC `sub` as the mailbox local part, at the selected mail
-domain. Contact email edits cannot switch a user into another mailbox. These
-generated addresses may be long; manage friendly aliases in Stalwart. Never
-link an existing mailbox or grant administrator roles solely by matching email.
-External identity creates the mailbox on first authentication; provision it
-before expecting inbound mail. Disabling/deleting MyAccounts users does not
-automatically delete their stored mail. Stalwart administration manages aliases,
-retention, suspension, account provisioning and protocol credentials.
+Mail keeps the immutable OIDC `sub` as its internal account key, preserving
+mailbox ownership and stored messages. Public addresses are readable:
+**admin@your-mail-domain** for the Workspace owner and
+**username@your-mail-domain** for other users. The compose window shows From.
+
+One Workspace checks its MyAccounts organization every 15 seconds and creates
+mailboxes before users first open Mail. Usernames are normalized to a safe email
+local part; collisions receive `.2`, `.3`, etc. Reserved administrator/system
+names cannot be claimed by ordinary users. Existing addresses and aliases are
+preserved, and username changes keep the assigned email address. Existing
+occupied admin addresses require explicit migration and are never taken over.
+Protected per-install assignments prevent address reuse after user removal.
+MyAccounts contact/recovery email fields are not changed.
+
+Standalone OIDC Mail provisions the signed-in user on first login; background
+provisioning requires the Workspace supervisor. Provisioning uses a rotating
+local-only credential, separate from user-token mailbox operations. Settings
+show native provisioning errors; Workspace records directory synchronization
+status in private `mailbox-sync.json`. Disabled/deleted users are not newly
+provisioned; mailbox deletion and retention remain explicit administration.
+No account is linked or granted administrator rights by matching contact email.
 
 With no OIDC connection, ordinary existing Stalwart mailbox credentials can be
 used for standalone sign-in. Recovery administrator credentials are isolated
@@ -78,7 +91,37 @@ from that login form and retained in protected `engine.dpapi` for local engine
 administration. The wizard initializes an internal directory when OIDC is blank;
 create ordinary mailboxes through Stalwart administration before signing in.
 
-## Cloudflare and Internet mail
+## Automatic hosting from One Workspace
+
+The current One Workspace installer source/local build has a domain-first
+connection mode. Enter the domain, connect Cloudflare, and install. It generates
+the MyAccounts client/callback, tunnel and web addresses without asking for
+issuer URLs, client secrets, account IDs or zone IDs.
+
+When included in that installer, Mail receives its domain and credentials from
+the protected suite runtime and configures itself on first launch. It discovers
+the public IPv4 using HTTPS at api4.ipify.org, publishes a DNS-only SMTP A record,
+MX, SPF and initial DMARC, and enables Stalwart's automatic DKIM and DNS-01 ACME
+certificate renewal. Signing selectors use an installation-specific prefix.
+Existing mail records stop automation rather than being replaced. Managed record
+IDs are saved for safe retries. The DNS credential is kept in DPAPI and passed to
+the engine as an environment secret for renewal.
+
+Mail shows progress and any hosting blocker instead of a second technical wizard.
+Advanced settings remain available. **This configures hosting; it does not prove
+Internet delivery.** TCP 25 must reach this computer, Windows/router/ISP policy
+must permit it, and reverse DNS is controlled by the server provider. Firewall
+rules, NAT mappings, reverse DNS, gateways and delivery-provider accounts are not
+provisioned by this build. Public SMTP is enabled only for this managed hosting
+mode. Certificates and DKIM are background Stalwart tasks, so completion is not
+claimed merely because their settings were saved. Use a server with a reachable
+mail connection, or provision a gateway/relay separately when the network blocks
+SMTP. The HTTP tunnel carries the web interface only.
+
+This does not change existing configured installations or create mailboxes from
+contact email addresses. Domain migration remains an administrator operation.
+
+## Advanced standalone Cloudflare and Internet mail
 
 `mail.m8e.co.uk` is the requested webmail hostname. A hostname alone does not
 activate Internet delivery. The wizard supports another user's domain as well.
@@ -99,7 +142,7 @@ activate Internet delivery. The wizard supports another user's domain as well.
 5. For receiving, run a reachable SMTP service on TCP 25 with a valid mail TLS
    certificate, a DNS-only SMTP hostname and its MX. Configure these in Stalwart
    administration or use a mail gateway. Cloudflare's HTTP tunnel does not
-   transport normal Internet SMTP. The initial engine exposes only loopback
+   transport normal Internet SMTP. The standalone/manual engine exposes only loopback
    HTTP and local SMTP, not public SMTP/IMAP/submission ports.
 6. Publish Stalwart's generated DKIM keys and configure reverse DNS with the
    SMTP host provider. Review existing MX/SPF before any migration.
@@ -132,3 +175,31 @@ Upstream's [agent/support policy](../AGENTS.md) permits local fork work but asks
 that support and proposed contributions go through support.stalw.art. It does
 not accept AI-generated upstream issues, pull requests or security reports;
 human security reports require personal reproduction and its SECURITY.md process.
+
+## Setup recovery
+
+See [Mail setup and recovery](RECOVERY.md) for mailbox access repair, exact DNS conflicts and planned migration guidance. The updated UI separates mailbox access from Internet email hosting.
+
+
+### Incoming mail during automatic installation
+
+An HTTPS tunnel makes the web UI reachable; SMTP uses public TCP25 separately.
+Managed hosting checks DNS and discovers a compatible UPnP Internet gateway on
+this PC's LAN. It creates a leased TCP25 rule only when that port is unused,
+reads the rule back, and renews its own rule every five minutes while running.
+Existing forwarding to other servers is preserved. A matching manually managed
+rule is preserved too. Router leases expire after the app stops.
+
+Setup also checks public TCP25 using Check-Host (only the public SMTP hostname
+is shared; no credentials or email content). An unavailable or inconclusive
+probe remains unverified. The installer shows Mail warnings and actionable
+network guidance while other Workspace apps remain usable. Checks retry every
+five minutes. A reachable connection does not prove message delivery or inbox
+placement. The installed Mail UI exposes the current result under Your Mail setup.
+
+If automatic forwarding is unavailable, forward router TCP25 to the Windows
+PC shown in Mail, allow the native mail server through Windows Security on the
+active network, and check your ISP permits incoming SMTP. Shared ISP NAT/double
+NAT needs an upstream forwarding rule, public address, or inbound mail gateway.
+An outgoing relay alone does not fix incoming email. The installer does not
+silently alter Windows firewall policy or overwrite another server's port rule.

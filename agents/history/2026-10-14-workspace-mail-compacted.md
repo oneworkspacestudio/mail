@@ -81,3 +81,45 @@ new release of every previously released component.
 Future work: public owner wizard completion, SMTP/TLS/gateway/DKIM/PTR deployment,
 friendly aliases, explicit functional acceptance if requested, mailbox lifecycle
 and full Gmail features. Never send external messages without authorization.
+
+
+## 2026-10-15: automatic managed hosting (local, unpublished)
+
+User clarified hosting setup should take a domain and automate the configuration.
+One Workspace's current source has domain-first Cloudflare connection; see its
+matching history and docs/HOSTING.md. No fresh publication authorized this turn.
+
+Mail adds trusted WORKSPACE_MAIL_DOMAIN/DNS_ZONE/DNS_TOKEN runtime inputs. Fresh
+managed installations derive the web host from the suite callback, use a distinct
+smtp.<domain> engine hostname, and asynchronously run the refactored internal
+configureMail method. Existing configured installations retain their domain.
+Managed setup shows progress/retry/advanced UI rather than the four-step form.
+Standalone/manual setup remains available. DNS credentials are DPAPI protected
+and redacted from engine logs; the engine receives an environment secret.
+
+New hosting.go discovers public IPv4 via HTTPS api4.ipify.org, validates active
+zone ownership, preflights all relevant DNS records (paginated), creates only new
+A/MX/SPF/initial DMARC and saves exact record-ID ownership receipts. Reuses only
+owned unchanged records; collisions, edited records and IP changes stop setup.
+Partial creation is retained/receipted for safe retry; uncertain outcomes require
+provider review. Existing mail services are not automatically migrated.
+
+It creates native x:DnsServer Cloudflare and x:AcmeProvider DNS01 objects, updates
+the email domain for automatic DKIM-only publishing and ACME with SMTP SAN. DKIM
+bootstrap is initially manual in managed mode; the post-preflight update enables
+automatic generation with an installation-specific selector prefix. This avoids
+bootstrap's broad default DNS publication (including MTA-STS we do not serve).
+A managed IPv4 public SMTP25 listener is added alongside private HTTP/localSMTP.
+Port occupancy is preflighted; bootstrap failure stops the recovery engine.
+No Windows firewall/NAT/PTR/ISP/gateway account provisioning is implemented.
+Certificate/key issuance runs in Stalwart background tasks; saving settings does
+not establish issuance success or Internet delivery. The UI states this limit.
+
+Evidence: local Mail.exe build 0.1.0-hosting-preview.2 and matching bundled suite
+compile; Node syntax check passes. No tests added/run, no mail submitted, no
+Cloudflare mutations or existing preview migration performed. Native DNS/ACME
+API shapes were read from pinned source, but the new workflow has NOT had an
+end-to-end DNS/ACME/public-mail acceptance run. Follow up with fresh authorized
+NTFS state/domain when testing is requested. No GitHub Actions or new release.
+Local artifact: workspace-mail/dist/Mail-hosting-preview.exe. Current public
+and localhost19590 previews still run their prior executables, intentionally.
