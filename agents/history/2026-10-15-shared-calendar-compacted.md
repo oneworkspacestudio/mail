@@ -25,3 +25,20 @@ Unit suites and Windows compilation pass. The complete new Workspace installer
 bundle, actual public MyAccounts, clean host/reboot and external mail have not
 been accepted. Calendar has Google-inspired layout, not full Google features.
 Finish publication with normal main pushes after fetching; do not force push.
+
+## Published
+
+Calendar SDK/source tag v0.1.0-preview.1 and unsigned Windows portable release:
+https://github.com/oneworkspacestudio/calendar/releases/tag/v0.1.0-preview.1
+All14 uploaded asset sizes/digests verified; public portable download returned200.
+Its source manifest pins Mail48f80639 and Workspace8d934a1. Both integrations are
+on their public main branches after normal rebase/push, preserving newer remote
+work and unrelated primary checkout changes. No force push or GitHub Actions.
+
+Final GOWORK=off suites pass with the published Calendar module/checksum; Windows
+Mail and Workspace compile. Final Mail.exe native OIDC/JMAP acceptance passes and
+exit retains Stalwart. The portable release supplies shared Mail.exe and exact
+Mail source; no new Mail-only or all-in-one suite release was published. Existing
+published installers/live apps remain unchanged. Later handoff-only commits do
+not change the released source implementation. Keep all documented preview and
+legacy migration boundaries when preparing a future full suite package.
