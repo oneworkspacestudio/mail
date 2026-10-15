@@ -81,3 +81,19 @@ After the status reports reachable, send a uniquely labelled message from an
 external provider and confirm that it appears in the intended mailbox. Reachable
 TCP25 does not prove delivery, TLS authentication, or spam placement. Previously
 queued messages can take longer because the sending provider schedules retries.
+
+## Chrome reports a dangerous or deceptive site
+
+This requires investigating the website's Safe Browsing classification. SMTP can
+continue receiving messages while a browser blocks a web sign-in. Mail uses its
+own One Workspace identity and shows the configured MyAccounts server; it does
+not represent itself as Google or ask for a Google account password.
+
+Review the affected URLs in [Google Search Console's Security Issues report](https://support.google.com/webmasters/answer/9044101).
+Check the deployed code and content, address every reported issue, then request
+a review. If the public status report and browser disagree, the public report
+alone does not establish that the warning is resolved. Google also provides a
+[classification review form](https://safebrowsing.google.com/safebrowsing/report_error/).
+Submit only public paths; remove OAuth codes, state values and other sign-in
+parameters from example URLs. Google controls review and propagation timing.
+Keep browser protections enabled while the issue is investigated.

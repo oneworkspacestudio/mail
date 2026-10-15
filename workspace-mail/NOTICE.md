@@ -13,6 +13,8 @@ https://github.com/stalwartlabs/stalwart/tree/v0.16.26 and in this fork's histor
 Stalwart copyright belongs to Stalwart Labs LLC; its source is licensed
 AGPL-3.0-only OR LicenseRef-SEL. The community AGPL option applies here.
 
+The One Workspace brand mark is from the Apache-2.0 licensed One Workspace project.
+
 Windows job management, private directory protection and DPAPI helpers in
 internal/platform are copied from https://github.com/oneworkspacestudio/one-workspace,
 under Apache-2.0; that directory retains its LICENSE. Other Go dependencies

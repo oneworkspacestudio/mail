@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="One Workspace logo">
+  <title>One Workspace logo</title>
+  <defs>
+    <linearGradient id="edge" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B8DFF"/>
+      <stop offset="1" stop-color="#A34DFF"/>
+    </linearGradient>
+    <linearGradient id="letters" x1="125" y1="144" x2="384" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#43CCFF"/>
+      <stop offset="1" stop-color="#A972FF"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="70" y1="20" x2="445" y2="496" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#070F26"/>
+      <stop offset="1" stop-color="#050A19"/>
+    </linearGradient>
+    <radialGradient id="haze" cx="0" cy="0" r="1" gradientTransform="translate(250 103) rotate(90) scale(370)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B8DFF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2B8DFF" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="rounded"><rect width="512" height="512" rx="76"/></clipPath>
+  </defs>
+  <!-- Canvas outside the rounded square remains fully transparent. -->
+  <g clip-path="url(#rounded)">
+    <rect width="512" height="512" fill="url(#panel)"/>
+    <rect width="512" height="512" fill="url(#haze)"/>
+    <rect x="7" y="7" width="498" height="498" rx="70" stroke="url(#edge)" stroke-width="12" fill="none"/>
+    <rect x="24" y="24" width="464" height="464" rx="55" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="2" fill="none"/>
+    <g fill="url(#letters)">
+      <path d="M1507 711Q1507 491 1420.0 324.0Q1333 157 1171.0 68.5Q1009 -20 793 -20Q461 -20 272.5 175.5Q84 371 84 711Q84 1050 272.0 1240.0Q460 1430 795 1430Q1130 1430 1318.5 1238.0Q1507 1046 1507 711ZM1206 711Q1206 939 1098.0 1068.5Q990 1198 795 1198Q597 1198 489.0 1069.5Q381 941 381 711Q381 479 491.5 345.5Q602 212 793 212Q991 212 1098.5 342.0Q1206 472 1206 711Z" transform="translate(62.500 343) scale(0.109756 -0.109756)"/>
+<path d="M1567 0H1217L1026 815Q991 959 967 1116Q943 985 928.0 916.5Q913 848 715 0H365L2 1409H301L505 499L551 279Q579 418 605.5 544.5Q632 671 805 1409H1135L1313 659Q1334 575 1384 279L1409 395L1462 625L1632 1409H1931Z" transform="translate(237.341 343) scale(0.109756 -0.109756)"/>
+    </g>
+  </g>
+</svg>

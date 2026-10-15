@@ -91,3 +91,24 @@ resolution/download/catalog verification/extraction of Mail14 passed (66 seconds
 Final browser sign-in reached a security page that automation cannot inspect or
 bypass; user inspection requested. No authentication/hosting server error is
 reported by Mail status. Keep this browser limitation distinct from SMTP delivery.
+
+## Browser reputation / independent identity follow-up
+User's screenshot confirms Google Safe Browsing's phishing interstitial on the
+public sign-in callback. This is separate from the repaired SMTP route. Do not
+bypass the warning, disable browser protection, or use a new hostname to evade it.
+The public Transparency Report returned no unsafe content for host and callback
+path, but that does not overrule the browser or establish the cause. Search Console
+was not verified for this property in the user's account. No DNS ownership token
+or new Search Console owner access was added. Report-error form prepared instead.
+
+Source review found the frontend reused Google's multicolour Gmail M mark. Mail15
+replaces it with One Workspace's existing Apache-2.0 brand asset, adds visible
+independent self-hosted identity and displays the actual MyAccounts host at login.
+This is legitimate identity correction, not proof the logo caused the flag. No
+remote injected scripts found in Mail frontend; installed binary hashes matched
+our public releases. This bounded check is not a complete audit of every app/domain.
+New Node identity tests cover standalone and prefixed asset paths, own brand and
+explicit identity text; status tests and JS syntax also pass. Built/deployed Mail
+0.1.0-preview.15 locally. SHA256 48307fb53c764f883def141c119bd9de9978a8ff06ab2d015bc8ea659d7bffa7. Network/authentication validation unchanged.
+Google review request must be approved by the user before sending on their behalf;
+no request submitted yet. Clearing Safe Browsing remains Google's decision.
