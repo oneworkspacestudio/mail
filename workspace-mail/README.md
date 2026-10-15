@@ -204,3 +204,23 @@ active network, and check your ISP permits incoming SMTP. Shared ISP NAT/double
 NAT needs an upstream forwarding rule, public address, or inbound mail gateway.
 An outgoing relay alone does not fix incoming email. The installer does not
 silently alter Windows firewall policy or overwrite another server's port rule.
+
+On Windows, bounded route discovery also checks private router hops beyond the
+LAN gateway. Supported upstream UPnP rules are renewed only when their existing
+TCP25 target and installation ownership can be verified. Older Mail rules can be
+adopted when this PC's matching legacy rule proves the migration context. Each
+installation then uses a distinct rule description. If a public connection fails,
+Mail recreates only its verified rules and checks public reachability again.
+Manual and other installations' rules are preserved. Mail refreshes the displayed
+incoming status every 30 seconds while open, without discarding an open draft.
+
+Some routers block discovery, do not support UPnP, or require manual forwarding.
+When the downstream target cannot be established, Mail explains which upstream
+hop needs attention. It cannot bypass ISP SMTP blocks or shared carrier NAT.
+
+Published Windows releases include `workspace-mail.json`, declaring the supported
+Workspace integration version, executable name and product version. Workspace's
+online installer uses this manifest and GitHub's asset digest to resolve Mail
+directly from `oneworkspacestudio/mail`; it fails if the newest release is invalid
+or incompatible rather than silently using an older binary. Build locally with
+`scripts/build.ps1`; no GitHub Actions are required.

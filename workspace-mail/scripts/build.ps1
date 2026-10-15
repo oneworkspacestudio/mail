@@ -14,6 +14,10 @@ try{
  if($LASTEXITCODE){throw 'Mail build failed'}
  $hash=(Get-FileHash dist/Mail.exe -Algorithm SHA256).Hash.ToLowerInvariant()
  [IO.File]::WriteAllText((Join-Path $root 'dist/SHA256SUMS.txt'),"$hash  Mail.exe`n",[Text.UTF8Encoding]::new($false))
+ $manifest=@{schema=1;integration=1;version=$Version;asset='Mail.exe'}|ConvertTo-Json -Compress
+ [IO.File]::WriteAllText((Join-Path $root 'dist/workspace-mail.json'),$manifest,[Text.UTF8Encoding]::new($false))
+ $markerHash=(Get-FileHash dist/workspace-mail.json -Algorithm SHA256).Hash.ToLowerInvariant()
+ [IO.File]::AppendAllText((Join-Path $root 'dist/SHA256SUMS.txt'),"$markerHash  workspace-mail.json`n",[Text.UTF8Encoding]::new($false))
  Copy-Item LICENSE dist/LICENSE.txt -Force
  Copy-Item NOTICE.md dist/NOTICE.md -Force
  Write-Output "Built $root/dist/Mail.exe"

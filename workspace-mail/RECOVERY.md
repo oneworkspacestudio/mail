@@ -57,3 +57,27 @@ delivery. Cloudflare's normal web proxy does not proxy SMTP port 25; see
 Support references: `mail_access_denied`, `mail_identity_rejected`,
 `mail_unavailable`, `existing_mail_dns`. Never include credentials, access tokens,
 setup links or message contents in a support report.
+
+## Webmail opens but incoming messages do not arrive
+
+Open Mail settings and review **Your Mail setup**. DNS and the web tunnel can be
+healthy while public SMTP is unreachable. Mail checks this separately and retries
+every five minutes; use the incoming connection retry control after a repair.
+
+On compatible routers, Mail maintains its leased TCP25 forwarding. For networks
+with two routers, it also renews verified upstream rules. If a router still lists
+a rule whose public connection fails, Mail can recreate its own exact rule and
+probe again. A listed forwarding rule alone is not proof of connectivity.
+
+If automatic recovery cannot verify ownership or the downstream target, the
+warning identifies the upstream hop. In that router, forward TCP25 to the next
+router, then forward it from the last router to the PC address shown by Mail.
+Preserve routes belonging to another service. Allow the native mail engine in
+Windows Security for the active network. If your ISP blocks TCP25 or uses shared
+carrier NAT, arrange a public mail host or inbound gateway; an outbound relay
+alone cannot receive messages. Do not disable the firewall to diagnose this.
+
+After the status reports reachable, send a uniquely labelled message from an
+external provider and confirm that it appears in the intended mailbox. Reachable
+TCP25 does not prove delivery, TLS authentication, or spam placement. Previously
+queued messages can take longer because the sending provider schedules retries.
