@@ -73,3 +73,12 @@ initial30-minute forwarding lease. Proof and monitor log are outside Git under
 C:/Projects/artifacts/mail-repair-20261015/ and the mail-inbound-fix staging dist.
 This validates the deployed network; unsupported routers/ISP blocks remain subject
 to the documented guidance. No firewall weakening or unrelated DNS changes.
+
+UI follow-up: final receipt screenshot exposed ambiguous warning text combining
+probe unavailability with delivery failure. The banner now distinguishes
+attention (SMTP could not be reached) from unverified (external check unavailable
+or inconclusive; mail may still be arriving). Node standard-library regression
+test exercises all four states; syntax check passes. No Go network behavior or
+engine changes. Mail0.1.0-preview.14 adds this wording fix, with SHA256 fe15cf6c3e9e61cf7ab22dd03bed72c74fdb51664342fca636e4884ded8e56ae.
+Workspace16 online resolver should independently upgrade its bundled13 to14;
+verify that real release overlay again. Offline16 deliberately retains13.
