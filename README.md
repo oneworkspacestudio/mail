@@ -13,6 +13,17 @@ independently with your own account provider and domain.
 
 ![Mail inbox and compose panel](workspace-mail/docs/screenshots/mail-compose.jpg)
 
+## Calendar, Mail and Contacts together
+
+The new [shared-service preview](https://github.com/oneworkspacestudio/calendar)
+lets Mail use the same Stalwart backend as My Calendar and My Contacts. Each app
+runs independently. Installing or removing an app keeps the other apps and your
+data intact. Download the shared Windows package from the Calendar repository.
+
+The published Mail-only releases described below use the earlier private-engine
+mode. They are not silently converted. See the [shared setup guide](workspace-mail/docs/SHARED-BACKEND.md)
+for build, storage and migration boundaries.
+
 ## What you can do
 
 - Read, compose, reply, forward and search your email in the browser.
@@ -38,8 +49,8 @@ and verifies its checksums.
 ## Run Mail independently
 
 Download `Mail.exe` from [Releases](https://github.com/oneworkspacestudio/mail/releases)
-and run it on 64-bit Windows. The executable includes the pinned Windows mail
-engine and opens its setup wizard in your browser. No Docker or separate Go,
+and run it on 64-bit Windows. Those earlier Mail-only release executables include the pinned Windows mail
+engine and open their setup wizard in your browser. No Docker or separate Go,
 Rust or Node installation is needed to run it.
 
 Standalone setup connects to your own MyAccounts OIDC client or existing

@@ -43,6 +43,9 @@ func (a *App) pendingMailDomain() *mailDomainChange {
 }
 
 func (a *App) engineAdmin() (string, error) {
+	if a.sharedRoot != "" {
+		return "", errors.New("Recovery credentials belong to Workspace Services; Mail has no shared administrator credential")
+	}
 	var secret map[string]string
 	if err := platform.LoadSecret(filepath.Join(a.data, "engine.dpapi"), &secret); err != nil {
 		return "", err

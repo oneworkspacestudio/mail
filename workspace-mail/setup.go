@@ -21,6 +21,10 @@ import (
 var domainPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`)
 
 func (a *App) setupAllowed(w http.ResponseWriter, r *http.Request) bool {
+	if a.sharedRoot != "" && a.cfg.Configured {
+		http.Error(w, "Shared backend settings are managed by Workspace Services", 409)
+		return false
+	}
 	if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Setup-Token")), []byte(a.setupToken)) == 1 {
 		return true
 	}
@@ -114,6 +118,9 @@ func (a *App) configureMail(parent context.Context, c Config) error {
 		if e := platform.LoadSecret(filepath.Join(a.data, "pending.dpapi"), &pending); e != nil || pending.Domain != c.Domain || pending.Hostname != c.Hostname || pending.Issuer != c.Issuer || pending.ClientID != c.ClientID || pending.EnginePort != c.EnginePort || pending.SMTPPort != c.SMTPPort || (pending.EngineHostname != "" && pending.EngineHostname != c.EngineHostname) || pending.AutomaticHosting != c.AutomaticHosting {
 			return errors.New("Incomplete setup belongs to different settings. Retain the existing data and inspect engine.log before migrating.")
 		}
+	}
+	if a.sharedRoot != "" {
+		return a.configureSharedMail(parent, c)
 	}
 	a.stopEngine()
 	ports := []int{c.EnginePort, c.SMTPPort}

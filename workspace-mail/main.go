@@ -2,8 +2,6 @@
 package main
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"embed"
@@ -12,7 +10,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -27,9 +24,10 @@ import (
 	"time"
 
 	"github.com/fahimc/stalwart/workspace-mail/internal/platform"
+	"github.com/oneworkspacestudio/calendar/shared"
 )
 
-//go:embed assets/* payload/stalwart.zip
+//go:embed assets/*
 var bundled embed.FS
 var version = "0.1.0-preview.1"
 
@@ -63,6 +61,7 @@ type Session struct {
 	mu                               sync.Mutex
 }
 type App struct {
+	sharedRoot                 string
 	data, base                 string
 	port                       int
 	mu                         sync.RWMutex
@@ -95,6 +94,8 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "do not open browser")
 	origin := flag.String("origin", "", "public HTTPS origin for standalone hosting")
 	openSetup := flag.Bool("setup", false, "open the existing protected setup wizard")
+	sharedData := flag.String("shared-data", shared.DefaultRoot(), "shared Stalwart installation data")
+	legacy := flag.Bool("legacy-engine", false, "explicitly run an existing legacy private engine; never auto-migrate")
 	flag.Parse()
 	if *port < 1024 || *port > 65532 {
 		log.Fatal("Choose a port from 1024 to 65532")
@@ -147,6 +148,17 @@ func main() {
 			app.cfg.Origin = u.Scheme + "://" + u.Host
 		}
 	}
+	if !*legacy {
+		app.sharedRoot = *sharedData
+		if _, legacyErr := os.Stat(filepath.Join(app.data, "engine.json")); legacyErr == nil {
+			log.Fatal("Legacy private Mail storage requires an explicit administrator migration; no shared backend was adopted.")
+		}
+		if e = app.attachShared(context.Background()); e != nil && !os.IsNotExist(e) {
+			log.Fatal(e)
+		} else if e != nil && app.cfg.Configured {
+			log.Fatal("Existing private Mail data was found. Use an explicit administrator migration or --legacy-engine; shared storage was not adopted.")
+		}
+	}
 	if domain := os.Getenv("WORKSPACE_MAIL_DOMAIN"); domain != "" && !app.cfg.Configured {
 		if !domainPattern.MatchString(domain) || len(domain) > 220 || app.cfg.Issuer == "" {
 			log.Fatal("Invalid managed Mail domain or missing MyAccounts connection")
@@ -163,7 +175,7 @@ func main() {
 	if e = platform.SaveSecret(filepath.Join(absolute, "setup.dpapi"), map[string]string{"url": app.cfg.Origin + app.base + "/setup#" + app.setupToken}); e != nil {
 		log.Fatal(e)
 	}
-	if app.cfg.Configured {
+	if app.cfg.Configured && app.sharedRoot == "" {
 		if e = app.startEngine(); e != nil {
 			log.Fatal(e)
 		}
@@ -279,8 +291,16 @@ func main() {
 		log.Fatal(e)
 	}
 }
-func (a *App) startEngine() error { return a.startEngineMode(false) }
+func (a *App) startEngine() error {
+	if a.sharedRoot != "" {
+		return nil
+	}
+	return a.startEngineMode(false)
+}
 func (a *App) stopEngine() {
+	if a.sharedRoot != "" {
+		return
+	}
 	if a.engine == nil {
 		return
 	}
@@ -295,31 +315,13 @@ func (a *App) stopEngine() {
 	a.engine = nil
 }
 func (a *App) startEngineMode(recoveryMode bool) error {
-	raw, e := bundled.ReadFile("payload/stalwart.zip")
+	if a.sharedRoot != "" {
+		return errors.New("Stalwart is owned by WorkspaceServices.exe")
+	}
+	self, _ := os.Executable()
+	exe, e := os.ReadFile(filepath.Join(filepath.Dir(self), "stalwart.exe"))
 	if e != nil {
-		return e
-	}
-	z, e := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
-	if e != nil {
-		return e
-	}
-	var exe []byte
-	for _, f := range z.File {
-		if filepath.Base(f.Name) == "stalwart.exe" {
-			r, e := f.Open()
-			if e != nil {
-				return e
-			}
-			exe, e = io.ReadAll(io.LimitReader(r, 200<<20))
-			r.Close()
-			if e != nil {
-				return e
-			}
-			break
-		}
-	}
-	if len(exe) == 0 {
-		return errors.New("embedded Stalwart is missing")
+		return errors.New("The separate stalwart.exe is missing; install the shared service package")
 	}
 	sum := sha256.Sum256(exe)
 	expected := hex.EncodeToString(sum[:])

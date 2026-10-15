@@ -66,6 +66,9 @@ func (a *App) loadMailboxBindings(c Config) (MailboxBindings, error) {
 }
 
 func (a *App) mailboxAddress(subject string) string {
+	if a.sharedRoot != "" {
+		return subject + "@" + a.cfg.Domain
+	}
 	a.provisionMu.Lock()
 	defer a.provisionMu.Unlock()
 	a.mu.RLock()

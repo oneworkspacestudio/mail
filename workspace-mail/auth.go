@@ -112,9 +112,11 @@ func (a *App) callback(w http.ResponseWriter, r *http.Request) {
 	if claims.Username == "" {
 		claims.Username = "user"
 	}
-	if _, err := a.ensureMailboxes(ctx, []MailboxUser{{Subject: verified.Subject, Username: claims.Username, Name: claims.Name}}); err != nil {
-		fail(w, errors.New("Your mailbox address could not be prepared: "+err.Error()))
-		return
+	if a.sharedRoot == "" {
+		if _, err := a.ensureMailboxes(ctx, []MailboxUser{{Subject: verified.Subject, Username: claims.Username, Name: claims.Name}}); err != nil {
+			fail(w, errors.New("Your mailbox address could not be prepared: "+err.Error()))
+			return
+		}
 	}
 	session := &Session{Auth: "Bearer " + token.AccessToken, Subject: verified.Subject, Name: claims.Name, Email: claims.Email, CSRF: platform.Token(), Expires: time.Now().Add(8 * time.Hour), TokenExpiry: token.Expiry, RefreshToken: token.RefreshToken}
 	a.newSession(w, session)

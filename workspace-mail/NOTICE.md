@@ -5,10 +5,12 @@ One Workspace Mail is an independent Gmail-style mail client in the
 Google or Stalwart Labs. The interface is an initial implementation, not a
 claim of complete Gmail feature compatibility.
 
-The launcher and web client are AGPL-3.0-only. See LICENSE. The executable
-embeds the **unmodified official Stalwart 0.16.26 Windows engine**, rather than
-claiming that its Rust core was rebuilt locally. The engine archive is pinned
-and checked by scripts/build.ps1. Engine source is available at
+The launcher and web client are AGPL-3.0-only. See LICENSE. Earlier Mail-only release executables embedded the **unmodified official
+Stalwart 0.16.26 Windows engine**. New shared-mode builds do not embed it: the
+separate shared Stalwart executable is supplied by the Calendar shared package
+and managed by WorkspaceServices.exe. No local Rust-core rebuild is claimed.
+Use scripts/build-shared.ps1 for this mode. The earlier script retains the
+pinned official archive verification for explicit legacy packaging. Engine source is available at
 https://github.com/stalwartlabs/stalwart/tree/v0.16.26 and in this fork's history.
 Stalwart copyright belongs to Stalwart Labs LLC; its source is licensed
 AGPL-3.0-only OR LicenseRef-SEL. The community AGPL option applies here.
