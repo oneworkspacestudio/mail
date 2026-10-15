@@ -1,0 +1,10 @@
+{
+  "name": "workspace-mail-frontend-checks",
+  "private": true,
+  "scripts": {
+    "test": "node compose.test.cjs"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12"
+  }
+}

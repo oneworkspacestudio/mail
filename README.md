@@ -1,4 +1,4 @@
-# Mail
+# <img src="workspace-mail/assets/mail.svg" alt="" width="42" height="42"> Mail
 
 **Your inbox, connected to One Workspace.**
 

@@ -233,3 +233,18 @@ online installer uses this manifest and GitHub's asset digest to resolve Mail
 directly from `oneworkspacestudio/mail`; it fails if the newest release is invalid
 or incompatible rather than silently using an older binary. Build locally with
 `scripts/build.ps1`; no GitHub Actions are required.
+
+### Local build modes and frontend checks
+
+The ordinary Go build embeds the pinned Windows engine and defaults to private
+storage. `WORKSPACE_MAIL_BACKEND=shared` or an explicit `--shared-data` selects
+the shared service. `scripts/build-shared.ps1` uses the `sharedengine` build tag
+and defaults to the external shared engine. An explicit private configuration
+keeps existing private storage; opening an old installation never migrates mail
+implicitly. See `docs/SHARED-BACKEND.md` before planning a migration.
+
+Run compose regression checks with `cd tests`, `npm install`, then `npm test`.
+The pinned DOM dependency is development-only; the installed executable needs
+no Node runtime. These checks exercise attachment retention, reopened drafts,
+HTML-only forwarding and CC-only submissions using a stubbed JMAP transport.
+They do not prove browser sign-in or real email delivery.

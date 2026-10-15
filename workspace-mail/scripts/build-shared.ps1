@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Force $out | Out-Null
 Push-Location $root
 try{
  $env:CGO_ENABLED='0'
- & $Go build -buildvcs=false -trimpath -ldflags "-s -w -X main.version=$Version" -o (Join-Path $out 'Mail.exe') .
+ & $Go build -tags sharedengine -buildvcs=false -trimpath -ldflags "-s -w -X main.version=$Version" -o (Join-Path $out 'Mail.exe') .
  if($LASTEXITCODE){throw 'Mail build failed'}
  foreach($name in $required){Copy-Item -LiteralPath (Join-Path $package $name) -Destination (Join-Path $out $name)}
  Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination (Join-Path $out 'LICENSE.txt')

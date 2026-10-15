@@ -95,8 +95,20 @@ func main() {
 	origin := flag.String("origin", "", "public HTTPS origin for standalone hosting")
 	openSetup := flag.Bool("setup", false, "open the existing protected setup wizard")
 	sharedData := flag.String("shared-data", shared.DefaultRoot(), "shared Stalwart installation data")
-	legacy := flag.Bool("legacy-engine", false, "explicitly run an existing legacy private engine; never auto-migrate")
+	legacy := flag.Bool("legacy-engine", privateEngineDefault(), "explicitly run an existing legacy private engine; never auto-migrate")
 	flag.Parse()
+	sharedExplicit, legacyExplicit := false, false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "shared-data" {
+			sharedExplicit = true
+		}
+		if f.Name == "legacy-engine" {
+			legacyExplicit = true
+		}
+	})
+	if sharedExplicit && !legacyExplicit && os.Getenv("WORKSPACE_MAIL_BACKEND") != "private" {
+		*legacy = false
+	}
 	if *port < 1024 || *port > 65532 {
 		log.Fatal("Choose a port from 1024 to 65532")
 	}
@@ -318,10 +330,9 @@ func (a *App) startEngineMode(recoveryMode bool) error {
 	if a.sharedRoot != "" {
 		return errors.New("Stalwart is owned by WorkspaceServices.exe")
 	}
-	self, _ := os.Executable()
-	exe, e := os.ReadFile(filepath.Join(filepath.Dir(self), "stalwart.exe"))
+	exe, e := loadPrivateEngine()
 	if e != nil {
-		return errors.New("The separate stalwart.exe is missing; install the shared service package")
+		return e
 	}
 	sum := sha256.Sum256(exe)
 	expected := hex.EncodeToString(sum[:])
