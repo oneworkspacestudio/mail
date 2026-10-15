@@ -1,5 +1,14 @@
 # Mail
 
+> **Current source uses the shared backend.** For Calendar, Mail and Contacts
+> together, use the [shared Windows package and setup guide](docs/SHARED-BACKEND.md).
+> Build with `scripts/build-shared.ps1`. Stalwart is a separate executable managed
+> by WorkspaceServices.exe; it is not embedded in new builds. The private-engine
+> packaging/hosting instructions below describe the earlier Mail-only releases.
+> Existing legacy storage requires explicit administrator migration and is never
+> silently adopted. Do not replace a legacy executable with a shared build in place.
+
+
 A native Windows mail app with a Gmail-style interface and a real Stalwart
 JMAP backend. Sign in with **MyAccounts**, use it independently, or add it to
 [One Workspace](https://github.com/oneworkspacestudio/one-workspace).
