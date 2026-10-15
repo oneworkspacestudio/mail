@@ -82,3 +82,12 @@ test exercises all four states; syntax check passes. No Go network behavior or
 engine changes. Mail0.1.0-preview.14 adds this wording fix, with SHA256 fe15cf6c3e9e61cf7ab22dd03bed72c74fdb51664342fca636e4884ded8e56ae.
 Workspace16 online resolver should independently upgrade its bundled13 to14;
 verify that real release overlay again. Offline16 deliberately retains13.
+
+Mail14 release published at
+https://github.com/oneworkspacestudio/mail/releases/tag/workspace-mail-v0.1.0-preview.14
+All five asset digests/sizes matched. The installed Mail14 received another
+authorized Gmail test at15:00:13 BST. Workspace16's real anonymous release
+resolution/download/catalog verification/extraction of Mail14 passed (66 seconds).
+Final browser sign-in reached a security page that automation cannot inspect or
+bypass; user inspection requested. No authentication/hosting server error is
+reported by Mail status. Keep this browser limitation distinct from SMTP delivery.
