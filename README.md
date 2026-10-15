@@ -1,6 +1,6 @@
 ## One Workspace Mail
 
-This fork adds [a Gmail-style Windows mail app](workspace-mail/README.md) with MyAccounts sign-in, a domain/Cloudflare setup wizard and [One Workspace](https://github.com/fahimc/one-workspace) integration. The launcher embeds the pinned official Stalwart Windows engine. See the app README for local builds, setup and preview limitations.
+This fork adds [a Gmail-style Windows mail app](workspace-mail/README.md) with MyAccounts sign-in, a domain/Cloudflare setup wizard and [One Workspace](https://github.com/oneworkspacestudio/one-workspace) integration. The launcher embeds the pinned official Stalwart Windows engine. See the app README for local builds, setup and preview limitations.
 
 ---
 
