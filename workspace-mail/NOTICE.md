@@ -1,7 +1,7 @@
 # Component provenance
 
 One Workspace Mail is an independent Gmail-style mail client in the
-`oneworkspacestudio/stalwart` fork. It is not a Google product and is not affiliated with
+`oneworkspacestudio/mail` fork. It is not a Google product and is not affiliated with
 Google or Stalwart Labs. The interface is an initial implementation, not a
 claim of complete Gmail feature compatibility.
 

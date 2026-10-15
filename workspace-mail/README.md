@@ -1,4 +1,4 @@
-# One Workspace Mail
+# Mail
 
 A native Windows mail app with a Gmail-style interface and a real Stalwart
 JMAP backend. Sign in with **MyAccounts**, use it independently, or add it to
@@ -93,7 +93,7 @@ create ordinary mailboxes through Stalwart administration before signing in.
 
 ## Automatic hosting from One Workspace
 
-The current One Workspace installer source/local build has a domain-first
+The published One Workspace installer has a domain-first
 connection mode. Enter the domain, connect Cloudflare, and install. It generates
 the MyAccounts client/callback, tunnel and web addresses without asking for
 issuer URLs, client secrets, account IDs or zone IDs.
@@ -111,9 +111,10 @@ Mail shows progress and any hosting blocker instead of a second technical wizard
 Advanced settings remain available. **This configures hosting; it does not prove
 Internet delivery.** TCP 25 must reach this computer, Windows/router/ISP policy
 must permit it, and reverse DNS is controlled by the server provider. Firewall
-rules, NAT mappings, reverse DNS, gateways and delivery-provider accounts are not
-provisioned by this build. Public SMTP is enabled only for this managed hosting
-mode. Certificates and DKIM are background Stalwart tasks, so completion is not
+policy, reverse DNS, gateways and delivery-provider accounts are not provisioned
+automatically. Compatible routers receive a leased SMTP forwarding rule, renewed
+while Mail runs; existing rules are preserved. Public SMTP is enabled only for
+this managed hosting mode. Certificates and DKIM are background Stalwart tasks, so completion is not
 claimed merely because their settings were saved. Use a server with a reachable
 mail connection, or provision a gateway/relay separately when the network blocks
 SMTP. The HTTP tunnel carries the web interface only.

@@ -4,7 +4,7 @@ const paths={menu:'M3 5h18M3 12h18M3 19h18',search:'m20 20-5-5M17 10a7 7 0 1 1-1
 function icon(name){const s=document.createElement('span');s.className='ico';s.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+(paths[name]||paths.all)+'"/></svg>';return s}
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
 function button(label,fn,cls='',ico){const b=el('button',cls);b.type='button';b.title=label;b.setAttribute('aria-label',label);if(ico)b.append(icon(ico));else b.textContent=label;if(fn)b.onclick=()=>Promise.resolve().then(fn).catch(error);return b}
-function sourceLink(){const a=el('a','muted','Source code');a.href='https://github.com/oneworkspacestudio/stalwart/tree/main/workspace-mail';a.target='_blank';a.rel='noopener noreferrer';return a}
+function sourceLink(){const a=el('a','muted','Source code');a.href='https://github.com/oneworkspacestudio/mail/tree/main/workspace-mail';a.target='_blank';a.rel='noopener noreferrer';return a}
 function brand(){const b=el('div','brand');b.innerHTML='<svg viewBox="0 0 36 30" aria-hidden="true"><path fill="#4285f4" d="M2 6 7 10v18H2z"/><path fill="#34a853" d="m29 10 5-4v22h-5z"/><path fill="#fbbc04" d="m29 10 5-4v-2c0-3-3-4-5-2l-11 9 5 4z"/><path fill="#ea4335" d="M2 6V4c0-3 3-4 5-2l11 9 11-9v8L18 19 7 10V2z"/></svg><span>Mail</span>';return b}
 function toast(t){const x=document.querySelector('#toast');x.textContent=t;x.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>x.classList.remove('show'),6000)}
 function error(e){console.warn(e.message);toast(e.message||String(e))}
