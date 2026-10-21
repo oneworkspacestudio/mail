@@ -32,3 +32,14 @@ no upstream Stalwart contact/issue/PR. No Actions. Artifacts under
 I:/Projects/tooling/mail-setup-20261021; NTFS fixtures/GOTMPDIR under named
 C:/Projects/.cache/mail-setup-20261021. Mail17/Workspace60 build, native full-suite
 upgrade/UI acceptance, backed-up local delivery and publication to be recorded.
+
+Native full-suite browser acceptance exposed a second first-use race after fixing
+roles: setup returned200 immediately after restarting the engine, and a real
+MyAccounts callback could fail provisioning before JMAP was listening. Normal
+startEngine now waits for an authenticated registry response (bounded45s), covering
+initial setup, restart and repair. Native tests assert immediate access after
+configureMail; interruption-after-defaults now injects at Authentication/set,
+since a single readiness-read failure is deliberately retried. All tests/vet pass.
+Earlier browser harness attempts also needed to handle both automatic provider
+SSO and an actual login form after manager restart; this was test-driver logic,
+not a reason to change account sessions. No live data or external mail involved.

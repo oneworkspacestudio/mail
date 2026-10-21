@@ -100,7 +100,7 @@ func testNativeWorkspaceMailIdentity(t *testing.T, scenario string) {
 					injected = true
 					return nil, errors.New("synthetic interruption before native defaults")
 				}
-				if len(request.MethodCalls) > 0 && request.MethodCalls[0][0] == "x:Authentication/get" && scenario == "retry after defaults" {
+				if len(request.MethodCalls) > 0 && request.MethodCalls[0][0] == "x:Authentication/set" && scenario == "retry after defaults" {
 					injected = true
 					return nil, errors.New("synthetic interrupted setup")
 				}
@@ -143,14 +143,8 @@ func testNativeWorkspaceMailIdentity(t *testing.T, scenario string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var settings map[string]any
-	for n := 0; n < 60; n++ {
-		settings, err = a.jmap(ctx, auth, "x:Authentication/get", map[string]any{"ids": []string{"singleton"}})
-		if err == nil {
-			break
-		}
-		time.Sleep(250 * time.Millisecond)
-	}
+	// configureMail must return only when immediate mailbox access is ready.
+	settings, err := a.jmap(ctx, auth, "x:Authentication/get", map[string]any{"ids": []string{"singleton"}})
 	if err != nil {
 		t.Fatal(err)
 	}

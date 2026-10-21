@@ -307,7 +307,28 @@ func (a *App) startEngine() error {
 	if a.sharedRoot != "" {
 		return nil
 	}
-	return a.startEngineMode(false)
+	if err := a.startEngineMode(false); err != nil {
+		return err
+	}
+	// Starting a process does not mean its registry and account directory are
+	// ready. Never finish setup or expose sign-in while that restart is pending.
+	auth, err := a.engineAdmin()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	for {
+		if _, err = a.jmap(ctx, auth, "x:Authentication/get", map[string]any{"ids": []string{"singleton"}}); err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			log.Printf("Mail engine startup diagnostic: %v", err)
+			return errors.New("Mail is still starting. Wait a moment, then choose Reconnect Mail.")
+		case <-time.After(250 * time.Millisecond):
+		}
+	}
 }
 func (a *App) stopEngine() {
 	if a.sharedRoot != "" {
