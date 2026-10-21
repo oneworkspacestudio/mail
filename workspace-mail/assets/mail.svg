@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="mail-title">
 <title id="mail-title">Mail</title>
 <defs>
-<linearGradient id="mail-navy" x1="26" y1="77" x2="228" y2="214" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4B4DD8"/><stop offset="0.48" stop-color="#302B99"/><stop offset="1" stop-color="#1C165E"/></linearGradient>
-<linearGradient id="mail-right-panel" x1="225" y1="78" x2="171" y2="197" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#211C70"/><stop offset="1" stop-color="#312EAF"/></linearGradient>
-<linearGradient id="mail-front-panel" x1="69" y1="131" x2="192" y2="221" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5268FC"/><stop offset="0.55" stop-color="#3849E8"/><stop offset="1" stop-color="#322ACC"/></linearGradient>
-<linearGradient id="mail-flap" x1="127" y1="43" x2="128" y2="155" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5272FF"/><stop offset="0.45" stop-color="#92ACFF"/><stop offset="1" stop-color="#CCD7FF"/></linearGradient>
+<linearGradient id="mail-navy" x1="26" y1="77" x2="228" y2="214" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#387AEB"/><stop offset="0.48" stop-color="#124DB2"/><stop offset="1" stop-color="#0A2D6A"/></linearGradient>
+<linearGradient id="mail-right-panel" x1="225" y1="78" x2="171" y2="197" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0D377F"/><stop offset="1" stop-color="#1456C9"/></linearGradient>
+<linearGradient id="mail-front-panel" x1="69" y1="131" x2="192" y2="221" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5F94EF"/><stop offset="0.55" stop-color="#3578EB"/><stop offset="1" stop-color="#1660E0"/></linearGradient>
+<linearGradient id="mail-flap" x1="127" y1="43" x2="128" y2="155" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6296EF"/><stop offset="0.45" stop-color="#9CBDF5"/><stop offset="1" stop-color="#D5E1F6"/></linearGradient>
 <clipPath id="mail-envelope-clip"><rect x="16" y="41" width="224" height="174" rx="32"/></clipPath>
 </defs>
 <rect x="16" y="41" width="224" height="174" rx="32" fill="url(#mail-navy)"/>
@@ -12,7 +12,7 @@
 <path d="M240 66 131 132 240 206Z" fill="url(#mail-right-panel)"/>
 <path d="M9 209 111 128Q128 115 145 128L248 208V222H9Z" fill="url(#mail-front-panel)"/>
 <path d="M16 70C16 54 30 41 48 41H208C226 41 240 54 240 70L143 148C132 158 127 160 116 152Z" fill="url(#mail-flap)"/>
-<path d="M17 70 116 152C127 160 132 158 143 148L239 70" fill="none" stroke="#E0E7FF" stroke-opacity="0.6" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M17 70 116 152C127 160 132 158 143 148L239 70" fill="none" stroke="#E5EDFA" stroke-opacity="0.6" stroke-width="1.2" stroke-linejoin="round"/>
 </g>
-<path d="M48 42H208C222 42 234 52 238 63" fill="none" stroke="#B9CAFF" stroke-opacity="0.35" stroke-width="1" stroke-linecap="round"/>
+<path d="M48 42H208C222 42 234 52 238 63" fill="none" stroke="#BFD4F9" stroke-opacity="0.35" stroke-width="1" stroke-linecap="round"/>
 </svg>

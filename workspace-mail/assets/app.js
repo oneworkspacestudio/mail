@@ -68,17 +68,17 @@ function mailboxRecovery(e){
  if(!target)return;
  const actions=el('div','recovery-actions');
  actions.append(button('Try opening Mail again',openMailbox,'pill'));
- if(canManageMail())actions.append(button('Repair mailbox access',repairMailbox,'primary'));
- else target.append(el('p','','Ask your Workspace owner to open Mail settings and choose Repair mailbox access. No DNS changes are needed for this repair.'));
+ if(canManageMail())actions.append(button('Reconnect Mail',repairMailbox,'primary'));
+ else target.append(el('p','','Ask your Workspace owner to open Mail settings and choose Reconnect Mail. No DNS changes are needed for this repair.'));
  actions.append(button('Sign in again',()=>location.href=(status.origin||location.origin)+base+'/auth/login','pill'),button('Mail hosting guidance',hostingPage,'pill'));
  target.append(actions,el('small','muted','Support reference: '+(e.code||'mailbox_not_ready')));
 }
 async function repairMailbox(){
  const buttons=[...root.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);
  try{
-  toast('Checking MyAccounts and restoring missing mailbox permissions…');
+  toast('Reconnecting Mail to your Workspace account…');
   await api('/api/identity/repair',{method:'POST',headers:setupToken?{'X-Setup-Token':setupToken}:{},body:'{}'});
-  status=await api('/api/status');await openMailbox();toast('Mailbox configuration repaired.');
+  status=await api('/api/status');await openMailbox();toast('Mail is connected.');
  }finally{buttons.forEach(b=>b.disabled=false)}
 }
 let hostingTimer;
@@ -106,9 +106,9 @@ function hostingPage(){
   await api('/api/hosting/subdomain/apply',{method:'POST',headers:setupToken?{'X-Setup-Token':setupToken}:{},body:JSON.stringify({domain:status.pendingMailDomain.domain,previousDomain:status.pendingMailDomain.previousDomain})});user=null;status=await api('/api/status');hostingPage();
  },'primary'));
  if(canManageMail()){
-  const repair=el('details');repair.append(el('summary','','Trouble opening your mailbox?'),el('p','','If sign-in succeeds but Mail reports access denied, repair the missing ordinary-user permission link. Existing custom permissions are preserved.'),button('Repair mailbox access',repairMailbox,'pill'));right.append(repair);
+  const repair=el('details');repair.append(el('summary','','Trouble opening your mailbox?'),el('p','','If sign-in succeeds but Mail reports access denied, reconnect Mail to your Workspace account. Your messages and existing access settings are kept.'),button('Reconnect Mail',repairMailbox,'pill'));right.append(repair);
   const advanced=el('details');advanced.append(el('summary','','Advanced settings'),el('p','muted','For custom networks or an outgoing delivery relay. A relay alone does not receive mail sent to your existing provider.'),button('Open advanced settings',()=>{clearTimeout(hostingTimer);wizard()},'pill'));right.append(advanced);
- }else right.append(el('p','muted','Only the Workspace owner can change hosting or repair server permissions.'));
+ }else right.append(el('p','muted','Only the Workspace owner can change hosting or reconnect Mail.'));
  right.append(sourceLink());card.append(left,right);wrap.append(card);root.append(wrap);
  if(status.hostingBusy||['checking','attention','unverified'].includes(status.inboundState))hostingTimer=setTimeout(async()=>{try{status=await api('/api/status');hostingPage()}catch(e){error(e)}},1500);
 }

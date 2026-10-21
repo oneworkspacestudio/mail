@@ -1,5 +1,17 @@
 # Mail setup and recovery
 
+## Mail setup after installing One Workspace
+
+Mail prepares its standard access settings automatically. You do not need to
+create or edit user roles. An earlier installer tried to connect the account
+before the mail engine had created those settings. Update One Workspace and
+Mail, then choose **Retry automatic setup** if setup was interrupted.
+
+If an existing account will not reconnect, the Workspace owner can choose
+**Reconnect Mail** in Mail setup. Messages and custom access settings are kept.
+Startup shows a plain-language next step; detailed diagnostics stay in the
+protected Mail and Workspace mail-setup logs for support.
+
 ## Sign-in works, but Mail reports access denied
 
 MyAccounts authentication and permission to use a Stalwart mailbox are separate.
@@ -14,7 +26,7 @@ continues to use each user's own MyAccounts access token.
 
 1. Refresh Mail and sign in again after updating.
 2. If access is still denied, the Workspace owner can open Mail settings and use
-   **Repair mailbox access**. Other users should contact that owner.
+   **Reconnect Mail**. Other users should contact that owner.
 3. If the standard User role has been changed or removed, restore/review that
    role first. The repair deliberately refuses ambiguous or elevated roles.
 

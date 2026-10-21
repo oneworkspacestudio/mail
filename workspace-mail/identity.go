@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/fahimc/stalwart/workspace-mail/internal/platform"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -13,7 +14,13 @@ import (
 
 // The per-domain directory and the default Bearer-token directory are separate
 // settings in Stalwart. Both must select this installation's MyAccounts client.
-func (a *App) configureIdentity(ctx context.Context) error {
+func (a *App) configureIdentity(ctx context.Context) (err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("Mail account connection diagnostic: %v", err)
+			err = &mailIdentitySetupError{cause: err}
+		}
+	}()
 	a.mu.RLock()
 	c := a.cfg
 	a.mu.RUnlock()
@@ -130,6 +137,14 @@ func (a *App) configureIdentity(ctx context.Context) error {
 	}
 	return e
 }
+
+type mailIdentitySetupError struct{ cause error }
+
+func (e *mailIdentitySetupError) Error() string {
+	return "Mail couldn't finish connecting your Workspace account. Choose Reconnect Mail in Mail setup. If it still won't connect, share the Mail setup log with support."
+}
+
+func (e *mailIdentitySetupError) Unwrap() error { return e.cause }
 
 // Matches the ordinary-user defaults in the pinned engine's permissions.rs.
 // Some sys* permissions are scoped to the user's own settings and credentials.

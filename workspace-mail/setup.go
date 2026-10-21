@@ -47,6 +47,9 @@ func (a *App) status(w http.ResponseWriter, r *http.Request) {
 	hostingBusy, hostingPhase, hostingError := a.hostingBusy, a.hostingPhase, a.hostingError
 	issue := a.hostingIssue
 	identityError := a.identityError
+	if identityError != "" {
+		identityError = (&mailIdentitySetupError{}).Error()
+	}
 	provisionError := a.provisionError
 	inboundState, inboundMessage := a.inboundState, a.inboundMessage
 	a.mu.RUnlock()
@@ -228,15 +231,18 @@ func (a *App) configureMail(parent context.Context, c Config) error {
 			id, _ := v["id"].(string)
 			switch v["name"] {
 			case "workspace-http":
+				delete(listeners["http"].(map[string]any), "name")
 				updates[id] = listeners["http"]
 				delete(listeners, "http")
 			case "smtp":
+				delete(listeners["smtp"].(map[string]any), "name")
 				updates[id] = listeners["smtp"]
 				delete(listeners, "smtp")
 			case "workspace-internet-smtp":
 				if !c.AutomaticHosting {
 					return errors.New("unexpected Internet mail listener")
 				}
+				delete(listeners["internet-smtp"].(map[string]any), "name")
 				updates[id] = listeners["internet-smtp"]
 				delete(listeners, "internet-smtp")
 			default:
@@ -246,6 +252,14 @@ func (a *App) configureMail(parent context.Context, c Config) error {
 	}
 	_, e = a.jmap(ctx, auth, "x:NetworkListener/set", map[string]any{"create": listeners, "update": updates})
 	if e != nil {
+		return e
+	}
+	// Recovery mode does not create the engine's standard roles or authentication
+	// defaults. All listeners are now explicitly restricted to this installation,
+	// so start normally before connecting MyAccounts. Asking for a User role in
+	// recovery mode leaves every fresh OIDC installation stuck before first boot.
+	a.stopEngine()
+	if e = a.startEngine(); e != nil {
 		return e
 	}
 	if e = a.configureIdentity(ctx); e != nil {
