@@ -43,3 +43,24 @@ since a single readiness-read failure is deliberately retried. All tests/vet pas
 Earlier browser harness attempts also needed to handle both automatic provider
 SSO and an actual login form after manager restart; this was test-driver logic,
 not a reason to change account sessions. No live data or external mail involved.
+
+## Verified final delivery
+
+Mail17 tag workspace-mail-v0.1.0-preview.17 is public from7e17754c; uploaded
+asset sizes and GitHub SHA256 digests match local packages. Workspace60 fixed the
+native install and61 adds plain incoming-connection startup messages; Mail17 is
+unchanged. Actual broken59 setup upgraded normally and resumed successfully,
+then opened an empty inbox through real MyAccounts at desktop/mobile widths.
+No browser errors or horizontal overflow; no external email or live-data fixture.
+
+Normal backed-up local delivery completed with Workspace61/Mail17. All24
+services healthy, Mail configured without identity error, encrypted Mail config
+unchanged, all other app versions and owner identity/storage retained. Latest
+recovery copy verified. Detailed combined proof is in the suite repository at
+docs/evidence/mail-setup-deployment-20261021.json. A separate actual incoming-mail
+network limitation remains a genuine warning, now explained plainly at startup.
+
+Native processes stopped and named C cache removed after containment/reparse/
+active-reference checks. Original source checkout's unrelated Linux edits are
+untouched. Do not push to upstream Stalwart or alter published tags/assets. Own
+studio fork only; no Actions. Keep current owner installation and verified backup.
