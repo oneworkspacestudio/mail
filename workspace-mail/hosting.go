@@ -29,10 +29,11 @@ type DNSConflict struct {
 	Proposed string `json:"proposed"`
 }
 type HostingIssue struct {
-	Code      string        `json:"code"`
-	Title     string        `json:"title"`
-	Domain    string        `json:"domain"`
-	Conflicts []DNSConflict `json:"conflicts"`
+	Code       string        `json:"code"`
+	Title      string        `json:"title"`
+	Domain     string        `json:"domain"`
+	Conflicts  []DNSConflict `json:"conflicts"`
+	Resolution string        `json:"resolution,omitempty"`
 }
 
 func (i *HostingIssue) Error() string {
@@ -63,6 +64,25 @@ func (a *App) beginHosting(parent context.Context) {
 		}
 		if e == nil {
 			e = a.configureHosting(ctx)
+			var conflict *HostingIssue
+			if errors.As(e, &conflict) {
+				a.hostingProgress("Keeping existing email safe and finding an available mail address…")
+				a.mu.RLock()
+				current := a.cfg
+				a.mu.RUnlock()
+				plan, planErr := a.chooseMailDomain(ctx, current)
+				if planErr == nil {
+					a.hostingProgress("Preparing @" + plan.Domain + " without changing existing email…")
+					planErr = a.applyMailDomain(ctx, plan.Domain, current.Domain, true)
+					if planErr == nil {
+						e = a.configureHosting(ctx)
+					}
+				}
+				if planErr != nil {
+					conflict.Resolution = planErr.Error()
+					e = conflict
+				}
+			}
 		}
 		a.mu.Lock()
 		defer a.mu.Unlock()
@@ -105,6 +125,7 @@ func (a *App) retryHosting(w http.ResponseWriter, r *http.Request) {
 type hostedRecord struct {
 	ID     string    `json:"id"`
 	Record DNSRecord `json:"record"`
+	Reused bool      `json:"reused,omitempty"`
 }
 type hostingState struct {
 	Domain  string         `json:"domain"`
@@ -160,7 +181,7 @@ func (a *App) configureHosting(ctx context.Context) error {
 	// Preflight every RRSet before publishing anything. Only records created by
 	// this installation can be reused; existing mail services require migration.
 	pending := []DNSRecord{}
-	issue := &HostingIssue{Code: "existing_mail_dns", Title: "Existing mail settings need a decision", Domain: c.Domain}
+	issue := &HostingIssue{Code: "existing_mail_dns", Title: "Finish connecting Internet mail", Domain: c.Domain}
 	for _, record := range records {
 		type dnsItem struct {
 			ID       string `json:"id"`
@@ -203,11 +224,19 @@ func (a *App) configureHosting(ctx context.Context) error {
 					break
 				}
 			}
+			// An exact compatible record is safe to use without editing it. A receipt
+			// records reuse explicitly; it is not permission to replace DNS later.
+			compatible := item.Type == record.Type && strings.EqualFold(strings.TrimSuffix(strings.Trim(item.Content, "\""), "."), strings.TrimSuffix(record.Content, ".")) && !item.Proxied && item.Priority == record.Priority
+			if !owned && compatible {
+				found = true
+				state.Records = append(state.Records, hostedRecord{ID: item.ID, Record: record, Reused: true})
+				continue
+			}
 			if !owned {
 				issue.Conflicts = append(issue.Conflicts, DNSConflict{Type: item.Type, Name: item.Name, Existing: item.Content, Proposed: record.Content})
 				continue
 			}
-			if item.Type != record.Type || !strings.EqualFold(strings.TrimSuffix(item.Content, "."), record.Content) || item.Proxied || item.Priority != record.Priority {
+			if !compatible {
 				return fmt.Errorf("the managed DNS record for %s changed; review it before retrying hosting", record.Name)
 			}
 			found = true
@@ -219,6 +248,11 @@ func (a *App) configureHosting(ctx context.Context) error {
 	if len(issue.Conflicts) > 0 {
 		return issue
 	}
+	// Persist reuse even when every required record already exists. This does not
+	// grant permission to alter those records on a later setup attempt.
+	if e = platform.SaveJSON(statePath, state); e != nil {
+		return e
+	}
 	a.hostingProgress("Publishing mail DNS without replacing existing records…")
 	for _, record := range pending {
 		var created struct {
@@ -227,7 +261,7 @@ func (a *App) configureHosting(ctx context.Context) error {
 		if e = cloudflareCall(ctx, c.DNSToken, "POST", "/zones/"+c.DNSZone+"/dns_records", record, &created); e != nil {
 			return e
 		}
-		state.Records = append(state.Records, hostedRecord{created.ID, record})
+		state.Records = append(state.Records, hostedRecord{ID: created.ID, Record: record})
 		if e = platform.SaveJSON(statePath, state); e != nil {
 			return fmt.Errorf("DNS was created but its ownership receipt could not be saved; inspect Cloudflare before retrying: %w", e)
 		}

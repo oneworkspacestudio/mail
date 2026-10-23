@@ -85,7 +85,7 @@ let hostingTimer;
 function hostingPage(){
  clearInterval(mailTimer);clearTimeout(hostingTimer);root.replaceChildren();
  const wrap=el('div','welcome'),card=el('section','login-card hosting-card'),left=el('div');
- left.append(brand(),el('h1','','Your Mail setup'),el('p','',status.domain));
+ left.append(brand(),el('h1','','Your Mail setup'),el('p','',status.domain),el('p','muted','Mailbox addresses: @'+status.domain));
  const right=el('div');
  right.append(el('h2','',status.hostingBusy?'Setting up your mail…':'Mail hosting'),el('p','lead',status.hostingPhase||'Workspace is preparing your mail server.'));
  if(status.identityError)right.append(el('p','hosting-error',status.identityError));
@@ -96,7 +96,7 @@ function hostingPage(){
  else if(status.hostingError){right.append(el('p','hosting-error',status.hostingError),el('p','','Retry after addressing the reported cause. For connection problems, check that this computer can reach MyAccounts and Cloudflare.'))}
  if(status.hostingBusy)right.append(el('p','muted','Checking Mail, DNS ownership and server settings. You can leave this window open.'));
  const actions=el('div','recovery-actions');
- if(!status.hostingBusy&&canManageMail())actions.append(button(status.hostingIssue?'Recheck domain setup':'Retry automatic setup',async()=>{
+ if(!status.hostingBusy&&!status.hostingIssue&&canManageMail())actions.append(button(status.hostingIssue?'Recheck domain setup':'Retry automatic setup',async()=>{
   await api('/api/hosting/retry',{method:'POST',headers:setupToken?{'X-Setup-Token':setupToken}:{},body:'{}'});status=await api('/api/status');hostingPage();
  },'pill'));
  if(status.configured)actions.append(button('Open Mail',()=>location.href=base+'/','primary'));
@@ -112,29 +112,28 @@ function hostingPage(){
  right.append(sourceLink());card.append(left,right);wrap.append(card);root.append(wrap);
  if(status.hostingBusy||['checking','attention','unverified'].includes(status.inboundState))hostingTimer=setTimeout(async()=>{try{status=await api('/api/status');hostingPage()}catch(e){error(e)}},1500);
 }
+async function finishMailSetup(){
+ const b=document.querySelector('.finish-mail-setup');if(b)b.disabled=true;
+ try{
+  await api('/api/hosting/retry',{method:'POST',headers:setupToken?{'X-Setup-Token':setupToken}:{},body:'{}'});
+  status=await api('/api/status');hostingPage();
+ }catch(e){if(b)b.disabled=false;const message=document.querySelector('.setup-action-error');if(message)message.textContent=e.message;else throw e}
+}
 function renderDNSGuidance(target,issue){
  const box=el('section','dns-guidance');
- box.append(el('h3','',issue.title),el('p','','This domain already has DNS used for mail. Setup stopped before publishing the new mail records. Existing records have been preserved.'));
+ box.append(el('h3','','Keep your existing email. Finish setting up Mail.'),el('p','','Workspace checks whether the existing mail records can be reused without changes. If they belong to another mail service, a new available subdomain is chosen automatically for this unpublished Mail installation.'));
+ if(issue.resolution)box.append(el('p','hosting-error',issue.resolution));
+ const actions=el('div','recovery-actions');
+ if(canManageMail())actions.append(button('Finish automatic setup',finishMailSetup,'primary finish-mail-setup'));
+ else actions.append(el('p','','Sign in as the Workspace owner to finish setup.'));
+ box.append(actions,el('p','setup-action-error'),el('p','muted','Existing mail routes and messages are preserved. Established mail domains are never moved automatically.'));
+ const details=el('details');details.append(el('summary','','DNS details and other options'));
  const table=el('table','dns-conflicts'),head=el('tr');
- for(const name of ['Record','Current destination / value','Workspace needs'])head.append(el('th','',name));table.append(head);
- for(const c of issue.conflicts){const row=el('tr');row.append(el('td','',c.type+' '+c.name),el('td','',c.existing),el('td','',c.proposed));table.append(row)}box.append(table);
- box.append(el('h3','','Choose what happens to your existing email'));
- const separate=el('div','separate-domain');separate.append(el('h3','','Use a separate mail subdomain'),el('p','','Keep the existing domain’s email route and let Workspace choose an unused subdomain. For example, addresses can end in @inbox.'+issue.domain+'. You will review the exact choice before it is applied.'));
- if(canManageMail())separate.append(button('Find an available mail subdomain',reviewMailSubdomain,'primary'));
- else separate.append(el('p','','Sign in as the Workspace owner to choose a separate mail subdomain.'));
- box.append(separate);
- const keep=el('details');keep.open=true;
- keep.append(el('summary','','Keep your current email service (recommended until you are ready to move)'),el('p','','Leave the DNS records as they are. Internet mail continues to follow the current MX record; this screen has not verified that destination is working. Workspace Mail does not automatically import or display mail from that provider.'),el('p','','You can open the local Workspace mailbox after signing in. Internet email to your existing address continues to follow the current MX record. To host a separate address such as you@mail.'+issue.domain+', a separate mail domain must be configured; changing this installation’s existing mailbox domain requires migration.'));
- const migrate=el('details');migrate.append(el('summary','','Move this domain’s email to Workspace'),el('p','','This moves delivery for everyone using @'+issue.domain+'. It needs a planned switch, rather than deleting the existing record to clear this warning.'));
- const steps=el('ol');
- for(const text of [
-  'Identify the server or provider behind the current MX destination above. Keep it running and back up or export the mail you need to retain.',
-  'Prepare a reachable SMTP server on TCP port 25 with matching reverse DNS. The web Cloudflare tunnel only makes the webmail page available; it does not establish Internet mail delivery.',
-  'Prepare mailbox addresses and import existing messages. Workspace currently uses stable MyAccounts subjects for mailbox names; confirm the required address aliases before switching delivery.',
-  'Have the domain owner approve the delivery cutover and review MX, SPF and DMARC together. Existing mail records must be migrated deliberately. Automatic setup will not overwrite or adopt unowned records.',
-  'After the old records have been deliberately migrated, use Recheck domain setup. New Workspace records can then be published. Confirm signing keys, TLS and external delivery before retiring the old service.'
- ])steps.append(el('li','',text));migrate.append(steps);box.append(keep,migrate,el('p','muted','Rechecking diagnoses the conflict again. It cannot resolve an existing mail service by itself. Support reference: existing_mail_dns'));
- target.append(box);
+ for(const name of ['Record','Current value','Required value'])head.append(el('th','',name));table.append(head);
+ for(const c of issue.conflicts){const row=el('tr');row.append(el('td','',c.type+' '+c.name),el('td','',c.existing),el('td','',c.proposed));table.append(row)}details.append(table);
+ if(canManageMail())details.append(button('Review a different mail address',reviewMailSubdomain,'pill'));
+ details.append(el('p','','To keep an established domain, update its conflicting DNS deliberately with your current provider, then retry. To move existing Internet mail, plan a migration first. Workspace will not replace another service’s records.'));
+ box.append(details);target.append(box);
 }
 
 async function reviewMailSubdomain(){
@@ -152,7 +151,7 @@ async function reviewMailSubdomain(){
  const actions=el('div','recovery-actions');
  actions.append(button('Back',hostingPage,'pill'),button('Use @'+plan.domain,async()=>{
   actions.querySelectorAll('button').forEach(b=>b.disabled=true);
-  try{await api('/api/hosting/subdomain/apply',{method:'POST',headers,body:JSON.stringify({domain:plan.domain,previousDomain:plan.previousDomain})});user=null;status=await api('/api/status');hostingPage();toast('Mail domain changed. Sign in again after setup finishes.')}catch(e){actions.querySelectorAll('button').forEach(b=>b.disabled=false);throw e}
+  try{await api('/api/hosting/subdomain/apply',{method:'POST',headers,body:JSON.stringify({domain:plan.domain,previousDomain:plan.previousDomain})});user=null;status=await api('/api/status');hostingPage();toast('Mail address prepared. Finishing DNS and server setup…')}catch(e){actions.querySelectorAll('button').forEach(b=>b.disabled=false);throw e}
  },'primary'));
  if(status.inboundState){const incoming=el('section','inbound-status');incoming.append(el('h3','','Incoming mail'),el('p',['attention','unverified'].includes(status.inboundState)?'status-error':'muted',status.inboundMessage));right.append(incoming);}right.append(actions);card.append(left,right);wrap.append(card);root.append(wrap);
 }

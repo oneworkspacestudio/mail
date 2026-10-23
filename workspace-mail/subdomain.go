@@ -73,6 +73,38 @@ func (a *App) availableMailDomain(ctx context.Context, c Config, domain string) 
 	return nil
 }
 
+func (a *App) chooseMailDomain(ctx context.Context, c Config) (mailDomainPlan, error) {
+	var zone struct {
+		Name   string `json:"name"`
+		Status string `json:"status"`
+	}
+	plan := mailDomainPlan{PreviousDomain: c.Domain, Unavailable: []string{}}
+	if err := cloudflareCall(ctx, c.DNSToken, "GET", "/zones/"+c.DNSZone, nil, &zone); err != nil {
+		return plan, err
+	}
+	if zone.Status != "active" || !domainPattern.MatchString(zone.Name) {
+		return plan, errors.New("The connected domain is not active")
+	}
+	labels := []string{"mail", "inbox", "post", "mailbox", "mail2"}
+	for n := 3; n <= 20; n++ {
+		labels = append(labels, fmt.Sprintf("mail%d", n))
+	}
+	for _, label := range labels {
+		domain := label + "." + zone.Name
+		err := a.availableMailDomain(ctx, c, domain)
+		if err == nil {
+			plan.Domain = domain
+			plan.SMTPHostname = "smtp." + domain
+			return plan, nil
+		}
+		if !strings.Contains(err.Error(), "already has DNS records") && domain != c.Domain {
+			return plan, err
+		}
+		plan.Unavailable = append(plan.Unavailable, domain)
+	}
+	return plan, errors.New("No unused mail address was found. Open advanced settings to choose another mail domain; existing DNS is unchanged")
+}
+
 func (a *App) planMailDomain(w http.ResponseWriter, r *http.Request) {
 	if !a.setupAllowed(w, r) {
 		return
@@ -82,40 +114,17 @@ func (a *App) planMailDomain(w http.ResponseWriter, r *http.Request) {
 	busy := a.hostingBusy
 	a.mu.RUnlock()
 	if !c.AutomaticHosting || !c.Configured || busy {
-		fail(w, errors.New("Wait for managed Mail setup to finish before choosing a subdomain"))
+		fail(w, errors.New("Wait for managed Mail setup to finish"))
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 40*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
-	var zone struct {
-		Name   string `json:"name"`
-		Status string `json:"status"`
-	}
-	if err := cloudflareCall(ctx, c.DNSToken, "GET", "/zones/"+c.DNSZone, nil, &zone); err != nil {
+	plan, err := a.chooseMailDomain(ctx, c)
+	if err != nil {
 		fail(w, err)
 		return
 	}
-	if zone.Status != "active" || !domainPattern.MatchString(zone.Name) {
-		fail(w, errors.New("The connected domain is not active"))
-		return
-	}
-	plan := mailDomainPlan{PreviousDomain: c.Domain, Unavailable: []string{}}
-	for _, label := range []string{"mail", "inbox", "post", "mail2"} {
-		domain := label + "." + zone.Name
-		err := a.availableMailDomain(ctx, c, domain)
-		if err == nil {
-			plan.Domain = domain
-			plan.SMTPHostname = "smtp." + domain
-			writeJSON(w, plan)
-			return
-		}
-		if !strings.Contains(err.Error(), "already has DNS records") && domain != c.Domain {
-			fail(w, err)
-			return
-		}
-		plan.Unavailable = append(plan.Unavailable, domain)
-	}
-	fail(w, errors.New("The suggested mail subdomains are already used. Keep existing DNS and choose a different dedicated mail domain with the Workspace owner"))
+	writeJSON(w, plan)
 }
 
 func (a *App) useMailDomain(w http.ResponseWriter, r *http.Request) {
@@ -130,78 +139,77 @@ func (a *App) useMailDomain(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+	if err := a.applyMailDomain(ctx, in.Domain, in.PreviousDomain, false); err != nil {
+		fail(w, err)
+		return
+	}
+	a.beginHosting(context.Background())
+	writeJSON(w, map[string]any{"ok": true, "domain": in.Domain, "message": "Mailboxes retained. Finishing automatic Mail setup; existing DNS is preserved."})
+}
+
+// The same journalled operation serves first-run automation and owner recovery.
+// Published domains and multi-domain installations are never renamed implicitly.
+func (a *App) applyMailDomain(ctx context.Context, domain, previousDomain string, automatic bool) error {
 	a.setupMu.Lock()
 	defer a.setupMu.Unlock()
 	a.mu.RLock()
 	c := a.cfg
 	busy := a.hostingBusy
 	a.mu.RUnlock()
-	if busy || !c.Configured || !c.AutomaticHosting {
-		fail(w, errors.New("Wait for managed Mail setup to finish"))
-		return
+	if (busy && !automatic) || !c.Configured || !c.AutomaticHosting {
+		return errors.New("Wait for managed Mail setup to finish")
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
-	defer cancel()
 	journalPath := filepath.Join(a.data, "mail-domain-change.dpapi")
 	var change mailDomainChange
 	err := platform.LoadSecret(journalPath, &change)
 	if err == nil {
-		if change.Domain != in.Domain {
-			fail(w, errors.New("Finish the pending mail-domain change before choosing another domain"))
-			return
+		if change.Domain != domain {
+			return errors.New("Finish the pending mail-domain change before choosing another domain")
 		}
 	} else if os.IsNotExist(err) {
-		if in.PreviousDomain != c.Domain {
-			fail(w, errors.New("Mail settings changed. Review the subdomain choice again"))
-			return
+		if previousDomain != c.Domain {
+			return errors.New("Mail settings changed. Review the subdomain choice again")
 		}
 		var zone struct {
 			Name   string `json:"name"`
 			Status string `json:"status"`
 		}
 		if err = cloudflareCall(ctx, c.DNSToken, "GET", "/zones/"+c.DNSZone, nil, &zone); err != nil {
-			fail(w, err)
-			return
+			return err
 		}
-		if zone.Status != "active" || !strings.HasSuffix(in.Domain, "."+zone.Name) || len(in.Domain) > 220 {
-			fail(w, errors.New("Choose a mail subdomain inside your connected domain"))
-			return
+		if zone.Status != "active" || !strings.HasSuffix(domain, "."+zone.Name) || len(domain) > 220 {
+			return errors.New("Choose a mail subdomain inside your connected domain")
 		}
-		if err = a.availableMailDomain(ctx, c, in.Domain); err != nil {
-			fail(w, err)
-			return
+		if err = a.availableMailDomain(ctx, c, domain); err != nil {
+			return err
 		}
 		var receipts hostingState
 		if err = platform.LoadJSON(filepath.Join(a.data, "hosting-dns.json"), &receipts); err != nil && !os.IsNotExist(err) {
-			fail(w, err)
-			return
+			return err
 		}
 		if len(receipts.Records) > 0 {
-			fail(w, errors.New("This Mail domain already published DNS. Changing it requires a planned migration; its existing records are preserved"))
-			return
+			return errors.New("This Mail domain already published DNS. Changing it requires a planned migration; its existing records are preserved")
 		}
 		auth, e := a.engineAdmin()
 		if e != nil {
-			fail(w, e)
-			return
+			return e
 		}
 		domains, e := a.jmap(ctx, auth, "x:Domain/get", map[string]any{})
 		if e != nil {
-			fail(w, e)
-			return
+			return e
 		}
 		items, _ := domains["list"].([]any)
 		if len(items) != 1 {
-			fail(w, errors.New("This installation has multiple mail domains. Keep them intact and use a planned migration for a separate mail domain"))
-			return
+			return errors.New("This installation has multiple mail domains. Keep them intact and use a planned migration for a separate mail domain")
 		}
 		for _, item := range items {
 			d, ok := item.(map[string]any)
 			if ok {
 				aliases, _ := d["aliases"].(map[string]any)
-				if d["name"] == in.Domain || aliases[in.Domain] != nil {
-					fail(w, errors.New("The proposed subdomain is already used inside Mail"))
-					return
+				if d["name"] == domain || aliases[domain] != nil {
+					return errors.New("The proposed subdomain is already used inside Mail")
 				}
 			}
 			if !ok || d["name"] != c.Domain {
@@ -211,65 +219,56 @@ func (a *App) useMailDomain(w http.ResponseWriter, r *http.Request) {
 			for _, property := range []string{"dnsManagement", "dkimManagement", "certificateManagement"} {
 				mode, _ := d[property].(map[string]any)
 				if mode["@type"] != "Manual" {
-					fail(w, errors.New("This domain already has managed signing, DNS or certificates. Use a planned migration"))
-					return
+					return errors.New("This domain already has managed signing, DNS or certificates. Use a planned migration")
 				}
 			}
-			change = mailDomainChange{PreviousDomain: c.Domain, Domain: in.Domain, SMTPHostname: "smtp." + in.Domain, Zone: c.DNSZone, Issuer: c.Issuer, ClientID: c.ClientID}
+			change = mailDomainChange{PreviousDomain: c.Domain, Domain: domain, SMTPHostname: "smtp." + domain, Zone: c.DNSZone, Issuer: c.Issuer, ClientID: c.ClientID}
 			change.DomainID, _ = d["id"].(string)
 			change.DirectoryID, _ = d["directoryId"].(string)
 		}
 		if change.DomainID == "" || change.DirectoryID == "" {
-			fail(w, errors.New("The managed MyAccounts mail domain could not be found"))
-			return
+			return errors.New("The managed MyAccounts mail domain could not be found")
 		}
 		directories, e := a.jmap(ctx, auth, "x:Directory/get", map[string]any{"ids": []string{change.DirectoryID}})
 		if e != nil {
-			fail(w, e)
-			return
+			return e
 		}
 		list, _ := directories["list"].([]any)
 		if len(list) != 1 {
-			fail(w, errors.New("The managed MyAccounts directory is missing"))
-			return
+			return errors.New("The managed MyAccounts directory is missing")
 		}
 		directory := list[0].(map[string]any)
 		if directory["issuerUrl"] != c.Issuer || directory["requireAudience"] != c.ClientID || directory["claimUsername"] != "sub" || directory["usernameDomain"] != c.Domain {
-			fail(w, errors.New("The mail directory needs owner review before changing domains"))
-			return
+			return errors.New("The mail directory needs owner review before changing domains")
 		}
 		system, e := a.jmap(ctx, auth, "x:SystemSettings/get", map[string]any{"ids": []string{"singleton"}})
 		if e != nil {
-			fail(w, e)
-			return
+			return e
 		}
 		list, _ = system["list"].([]any)
 		if len(list) != 1 || list[0].(map[string]any)["defaultDomainId"] != change.DomainID {
-			fail(w, errors.New("This is not the managed default mail domain; use a planned migration"))
-			return
+			return errors.New("This is not the managed default mail domain; use a planned migration")
 		}
 		if err = platform.SaveSecret(journalPath, change); err != nil {
-			fail(w, err)
-			return
+			return err
 		}
 	} else {
-		fail(w, err)
-		return
+		return err
 	}
 	if _, err = a.resumeMailDomainChange(ctx); err != nil {
 		a.mu.Lock()
 		a.identityError = "Mail-domain change paused: " + err.Error()
 		a.mu.Unlock()
-		fail(w, err)
-		return
+		return err
 	}
-	a.beginHosting(context.Background())
-	writeJSON(w, map[string]any{"ok": true, "domain": change.Domain, "message": "Mailboxes retained. Setting up the separate mail domain; the original domain’s DNS is preserved."})
+	return nil
 }
 
 // A protected journal lets startup finish the same in-place domain rename after
 // interruption. Account/domain IDs and message storage are never recreated.
 func (a *App) resumeMailDomainChange(ctx context.Context) (bool, error) {
+	a.provisionMu.Lock()
+	defer a.provisionMu.Unlock()
 	path := filepath.Join(a.data, "mail-domain-change.dpapi")
 	var change mailDomainChange
 	if err := platform.LoadSecret(path, &change); os.IsNotExist(err) {
@@ -282,6 +281,29 @@ func (a *App) resumeMailDomainChange(ctx context.Context) (bool, error) {
 	a.mu.RUnlock()
 	if (c.Domain != change.PreviousDomain && c.Domain != change.Domain) || c.DNSZone != change.Zone || c.Issuer != change.Issuer || c.ClientID != change.ClientID {
 		return false, errors.New("The pending mail-domain change does not match this installation")
+	}
+	// Validate and retain human-readable mailbox assignments before changing
+	// anything native. Domain IDs and account IDs stay the same. The journal
+	// permits either side after an interrupted write, without losing assignments.
+	bindingsPath := filepath.Join(a.data, "mailboxes.dpapi")
+	var bindings MailboxBindings
+	bindingsErr := platform.LoadSecret(bindingsPath, &bindings)
+	if bindingsErr != nil && !os.IsNotExist(bindingsErr) {
+		return false, errors.New("Mailbox assignments could not be read; reconnect Mail before changing its domain")
+	}
+	if bindingsErr == nil {
+		if bindings.Issuer != c.Issuer || bindings.ClientID != c.ClientID || (bindings.Domain != change.PreviousDomain && bindings.Domain != change.Domain) {
+			return false, errors.New("Mailbox assignments do not match the pending mail-domain change")
+		}
+		for subject, binding := range bindings.Users {
+			suffix := "@" + bindings.Domain
+			if !strings.HasSuffix(binding.Address, suffix) || strings.Count(binding.Address, "@") != 1 {
+				return false, errors.New("A mailbox address needs review before changing its domain")
+			}
+			binding.Address = strings.TrimSuffix(binding.Address, suffix) + "@" + change.Domain
+			bindings.Users[subject] = binding
+		}
+		bindings.Domain = change.Domain
 	}
 	auth, err := a.engineAdmin()
 	if err != nil {
@@ -336,6 +358,11 @@ func (a *App) resumeMailDomainChange(ctx context.Context) (bool, error) {
 	}
 	c.Domain = change.Domain
 	c.EngineHostname = change.SMTPHostname
+	if bindingsErr == nil {
+		if err = platform.SaveSecret(bindingsPath, bindings); err != nil {
+			return false, err
+		}
+	}
 	if err = platform.SaveSecret(filepath.Join(a.data, "mail.dpapi"), c); err != nil {
 		return false, err
 	}

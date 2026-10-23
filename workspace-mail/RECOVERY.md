@@ -109,3 +109,16 @@ alone does not establish that the warning is resolved. Google also provides a
 Submit only public paths; remove OAuth codes, state values and other sign-in
 parameters from example URLs. Google controls review and propagation timing.
 Keep browser protections enabled while the issue is investigated.
+
+
+## Automatic domain selection
+
+Managed setup reuses exact compatible DNS records without changing their values.
+Conflicting routes are preserved. For an unpublished single-domain installation,
+setup automatically chooses a free subdomain and resumes the same journalled
+domain change; mailbox IDs, folders and messages stay in place. Existing published
+domains are not automatically renamed. A subdomain with another installation's
+DNS is skipped rather than taken over, even when both use the same public IP.
+The setup page offers Finish automatic setup, Open Mail and expandable DNS details.
+Internet delivery still depends on SMTP reachability, certificates and signing;
+successful DNS publication alone is not delivery verification.
