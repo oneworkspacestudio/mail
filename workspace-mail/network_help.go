@@ -22,6 +22,7 @@ type inboundHelp struct {
 }
 
 func incomingHelp(state string, err error) inboundHelp {
+	publicResponds := state == "reachable"
 	if err != nil && state == "reachable" {
 		state = "unverified"
 	}
@@ -54,8 +55,12 @@ func incomingHelp(state string, err error) inboundHelp {
 			help.Title = "Another PC already receives your email"
 			help.Summary = "Keep the current receiver and connect both installations through it, or deliberately move incoming mail to this PC. A new email subdomain cannot split a single router connection between two PCs. Existing forwarding has been preserved."
 		case "upstream_router":
-			help.Title = "One more router needs permission"
-			help.Summary = "Mail configured the local router, but the upstream router did not allow automatic setup. Open that router and allow UPnP or have its owner confirm incoming Mail forwarding, then choose Repair connection. Existing routes are preserved."
+			help.Title = "Automatic router inspection is unavailable"
+			help.Summary = "Mail cannot inspect the upstream router from this PC. A manually configured connection can still work. If messages arrive, keep the working settings. If they do not arrive, ask the router owner to check incoming Mail forwarding, then choose Repair connection. Existing routes are preserved."
+			if publicResponds {
+				help.Title = "The public Mail connection responds"
+				help.Summary = "Public SMTP responds, but Mail cannot inspect the upstream router to confirm which PC receives it. If messages arrive here, no router change is needed. This connection check does not verify message delivery."
+			}
 		case "dns_pending":
 			help.Title = "Waiting for the email address to connect"
 			help.Summary = "Mail is waiting for public DNS to match this connection. It will retry automatically."

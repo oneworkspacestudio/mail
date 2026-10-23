@@ -83,3 +83,38 @@ so Mail23 routes that outcome through existing upstream_router help and the
 owner-only Open router settings action. No new rule is created or unowned rule
 replaced by this UI correction. Physical router permissions/ISP restrictions
 remain real prerequisites; shared clients do not each need those permissions.
+
+## Resumed October24 deployment and diagnostics
+Public Workspace76/Mail23 channel promoted on Workspace main (fe17dd7), rebased
+onto concurrent Music publication without dropping it. Unauthenticated raw index
+contains both tags; normal75 controller now offers76 and23. Main selected only
+Workspace/Mail and is running its normal verified-backup update. A separate
+secondary operation includes Mail23/Music/Slicer/Social; do not interrupt/replay it.
+Main Mail opened signed in and loaded its existing Inbox. Advanced details stayed
+expanded across a real incoming-status change. Secondary accounts-2 sign-in is
+reported failing; its browser still holds an old OAuth request and installation
+is restarting. Need fresh normal authorization after restart before diagnosing
+password vs callback; never reset credentials speculatively.
+Router owner has signed in. Read-only Archer inspection found no TCP25 static or
+UPnP rule; eero DHCP lease is .120 on upstream subnet, inner mapping routes25 to
+the main PC. Prepared TCP25 -> eero .120:25 in router UI; saving requires pending
+user confirmation for Internet exposure. No router setting changed. Main shared
+Mail pairing on secondary remains pending. C named76 link scratch removed after
+exact-path, reparse and build-process checks; free space was17.06GiB. Remote Run
+partial recovery command was cancelled without execution; on-screen-input restored
+to its original off state. No protected capabilities or authentication credentials
+were displayed, persisted in source or sent to another service.
+
+## Mail24 wording correction after real delivery
+User approved the prepared router TCP25 rule; saved and verified enabled with
+matching eero DHCP reservation. A fresh accounts-2 portal authorization and Mail
+setup sign-in completed automatically, without password changes. Saved approved
+main URL on secondary; shared page correctly reports main outage, then availability.
+Main76/Mail23 received the authorised Gmail test in its Inbox and its reply arrived
+in Gmail. Only labelled test content/addresses were used; no other mailbox content
+is copied into history. Router inspection still fails across NAT despite working
+manual forwarding, so23 incorrectly says it needs permission. Mail24 now separates
+unavailable inspection from public SMTP response and actual delivery, tells users
+to keep working settings when mail arrives, and uses that guidance in the Inbox
+warning. No route, credential, auth or delivery logic changes. JS syntax passed;
+Windows build, publication/promotion and final deployment remain to complete.

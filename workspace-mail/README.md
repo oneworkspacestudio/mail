@@ -274,3 +274,9 @@ The pinned DOM dependency is development-only; the installed executable needs
 no Node runtime. These checks exercise attachment retention, reopened drafts,
 HTML-only forwarding and CC-only submissions using a stubbed JMAP transport.
 They do not prove browser sign-in or real email delivery.
+
+
+Automatic router inspection and message delivery are separate checks. An upstream
+router may reject inspection even when its manually configured forwarding works.
+Mail explains that distinction and preserves a working connection; it does not
+ask people to enable UPnP again merely because inspection is unavailable.
