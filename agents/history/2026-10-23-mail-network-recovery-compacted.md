@@ -33,3 +33,10 @@ Do not silently overwrite another working mail service or claim inbound delivery
 Windows compilation, JS syntax and diff checks passed. No automated/native
 fresh-host or external delivery acceptance. Artifacts on I under
 Projects/tooling/mail-network-20261023; publication/deployment to be recorded.
+
+Publication discovered a packaging gap in standalone19: the generic managed
+updater requires workspace-update.json (schema1/integration2), not only the
+fresh-installer workspace-mail.json marker. Remote check correctly refused19;
+no install was attempted. Prepare20 with a tracked managed-release generator and
+all three owned packages (Mail, license, notice), keeping paths/contracts intact.
+Keep19 and all published tags/assets unchanged; promote20 once verified.
