@@ -74,3 +74,12 @@ mailbox setup/delivery. Standalone public Mail metadata remains supported. Fresh
 shared clients report readiness to the manager without a local mailbox; settings
 and local OIDC stay protected. A browser handoff marker stops automatic satellite
 forwarding chains. No manager authentication protection was relaxed.
+
+
+Main Mail22 now runs and reveals a genuine outer-router permission/discovery
+blocker. Its local router is configured; the upstream device does not accept
+automatic setup. The generic discovery error omitted the structured router URL,
+so Mail23 routes that outcome through existing upstream_router help and the
+owner-only Open router settings action. No new rule is created or unowned rule
+replaced by this UI correction. Physical router permissions/ISP restrictions
+remain real prerequisites; shared clients do not each need those permissions.

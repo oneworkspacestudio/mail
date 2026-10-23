@@ -265,7 +265,7 @@ func configureInboundRoute(ctx context.Context, hostname, description string) (s
 		}
 		upstream, e := discoverMailGateway(ctx, local, hop)
 		if e != nil {
-			return message, routes, fmt.Errorf("Another private router hop (%s) was detected. Its TCP25 forwarding could not be managed. Forward TCP25 through each router to this PC, or use an inbound gateway. Setup retries automatically.", hop)
+			return message, routes, &inboundRouteIssue{Code: "upstream_router", Message: "The upstream router did not accept automatic Mail setup. Its owner needs to allow the incoming connection; existing forwarding has been preserved.", Router: hop.String()}
 		}
 		var downstream net.IP
 		if len(routes) > 0 && external.IsPrivate() {

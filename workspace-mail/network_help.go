@@ -55,7 +55,7 @@ func incomingHelp(state string, err error) inboundHelp {
 			help.Summary = "Keep the current receiver and connect both installations through it, or deliberately move incoming mail to this PC. A new email subdomain cannot split a single router connection between two PCs. Existing forwarding has been preserved."
 		case "upstream_router":
 			help.Title = "One more router needs permission"
-			help.Summary = "Mail configured the local router, but the upstream router still needs a confirmed route to it. Existing routes are preserved."
+			help.Summary = "Mail configured the local router, but the upstream router did not allow automatic setup. Open that router and allow UPnP or have its owner confirm incoming Mail forwarding, then choose Repair connection. Existing routes are preserved."
 		case "dns_pending":
 			help.Title = "Waiting for the email address to connect"
 			help.Summary = "Mail is waiting for public DNS to match this connection. It will retry automatically."
