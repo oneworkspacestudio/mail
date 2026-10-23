@@ -37,15 +37,18 @@ remain visible in Mail settings and Workspace startup progress.
 
 An MX record determines where Internet email for a domain is delivered. Existing
 MX/SPF/DMARC or conflicting hostname records can belong to another mail service.
-Mail preflights the whole DNS plan before creating records. The updated screen
-lists current and proposed values and offers guidance for keeping or migrating
-the existing service. **Recheck domain setup** cannot migrate existing mail.
+Mail preflights the whole DNS plan before creating records. Matching records are
+reused unchanged. An unpublished installation automatically finds an unused
+subdomain when the original domain belongs to another mail service. **Finish
+automatic setup** retries that process; current and proposed DNS values remain
+available under **DNS details and other options**.
 
 ### Use an available mail subdomain
 
-The owner can choose **Find an available mail subdomain**. Workspace checks
-`mail`, `inbox`, `post` and `mail2` under the connected Cloudflare zone, including
-the SMTP and DMARC names. An existing webmail CNAME is treated as occupied.
+The owner can also choose **Review a different mail address** in DNS details.
+Workspace checks `mail`, `inbox`, `post`, `mailbox` and numbered mail names under
+the connected Cloudflare zone, including SMTP and DMARC names. An existing
+webmail CNAME or another installation's DNS is treated as occupied.
 Review the offered domain and choose **Use @…**. Email addresses will end in
 that subdomain; the webmail URL and original domain's MX records stay unchanged.
 
