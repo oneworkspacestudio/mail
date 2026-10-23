@@ -1,12 +1,10 @@
 # Mail
 
-> **Current source uses the shared backend.** For Calendar, Mail and Contacts
-> together, use the [shared Windows package and setup guide](docs/SHARED-BACKEND.md).
-> Build with `scripts/build-shared.ps1`. Stalwart is a separate executable managed
-> by WorkspaceServices.exe; it is not embedded in new builds. The private-engine
-> packaging/hosting instructions below describe the earlier Mail-only releases.
-> Existing legacy storage requires explicit administrator migration and is never
-> silently adopted. Do not replace a legacy executable with a shared build in place.
+> **Workspace managed releases use the private Mail backend.** A separate
+> Calendar/Mail/Contacts shared-backend build is documented in the
+> [shared Windows setup guide](docs/SHARED-BACKEND.md). Do not replace one
+> storage layout with the other without an explicit migration.
+
 
 
 A native Windows mail app with a Gmail-style interface and a real Stalwart
@@ -33,6 +31,31 @@ This is a preview, not complete Gmail parity: it does not yet include offline
 mail, snooze, Gmail category classification, scheduled sending, conversations
 merged into Gmail-style thread cards, rich HTML composition or calendar/contact
 apps. Messages are displayed as plain text; remote content does not run.
+
+## Use Mail from several PCs
+
+Keep one main PC to receive and store email. Other Workspace installations can
+open **Mail settings → Use an existing Mail service** and connect to it. There
+is no fixed PC limit; capacity depends on the main server. It must be running.
+
+Fresh managed setup checks for an existing main service before creating local
+mailboxes. It reads an optional `_oneworkspace-mail.<zone>` TXT record containing
+`oneworkspace-mail=https://your-main-workspace/mail/`, then checks the standard
+`workspace.<zone>/mail/` address. A reachable service is offered for owner review.
+For custom addresses or an unavailable main PC, enter its Mail HTTPS address in
+the same screen. The owner can explicitly save an offline address; the app shows
+that it is unavailable and retries instead of pretending mail is ready.
+
+After connecting, opening Mail automatically checks and opens the main service.
+This PC's private engine and incoming-router checks stop. Local messages/settings
+are retained, not migrated. **Mail settings** at `/mail/setup` lets the owner
+change the address or resume the separate local server. Everyone uses accounts
+on the main installation; separate MyAccounts issuers are never merged by email.
+Discovery uses public HTTPS metadata without credentials or OAuth tokens.
+
+One public SMTP port cannot forward independently to multiple PCs just because
+their email subdomains differ. Independent stores need a routing/queue gateway
+or separate public receiving endpoints. Existing receiver rules are preserved.
 
 ## Build locally
 

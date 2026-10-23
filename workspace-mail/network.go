@@ -49,16 +49,25 @@ func (a *App) inboundProgress(state, message string) {
 // conflict-checked mapping only for the managed engine's public TCP25 listener.
 func (a *App) maintainInboundMail(ctx context.Context) {
 	for {
+		a.networkMu.Lock()
 		a.mu.RLock()
 		c := a.cfg
+		chooseMain := a.hostingIssue != nil && a.hostingIssue.Code == "main_mail_available"
 		a.mu.RUnlock()
 		delay := 5 * time.Minute
-		if !c.Configured {
+		if c.MainMailURL != "" {
+			a.inboundProgress("shared", "Incoming mail is managed by the main Mail service.")
+		} else if chooseMain {
+			a.inboundProgress("choose_service", "Choose whether to use the existing main Mail service.")
+		} else if !c.Configured {
 			a.inboundProgress("checking", "Waiting for the mail server to finish setup.")
 			delay = 5 * time.Second
 		} else {
 			a.inboundProgress("checking", "Checking router forwarding and public TCP25 reachability…")
 			attempt, cancel := context.WithTimeout(ctx, 90*time.Second)
+			a.mu.Lock()
+			a.networkCancel = cancel
+			a.mu.Unlock()
 			ownerHash := sha256.Sum256([]byte(a.data + "|" + c.ClientID))
 			// Stay below routers' common 31-character description limit.
 			description := "Workspace Mail " + hex.EncodeToString(ownerHash[:6])
@@ -74,6 +83,7 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 			}
 			cancel()
 			a.mu.Lock()
+			a.networkCancel = nil
 			a.inboundHelp = incomingHelp(state, routeErr)
 			a.mu.Unlock()
 			if state == "reachable" && routeErr == nil {
@@ -88,6 +98,7 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 				a.inboundProgress(state, routeMessage+" "+probeMessage)
 			}
 		}
+		a.networkMu.Unlock()
 		select {
 		case <-ctx.Done():
 			return

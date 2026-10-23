@@ -18,6 +18,7 @@ import (
 type Login struct {
 	Nonce, Verifier string
 	Expires         time.Time
+	Setup           bool
 }
 
 func (a *App) oidcConfig(ctx context.Context) (*oidc.Provider, oauth2.Config, error) {
@@ -56,7 +57,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Please retry later", 429)
 		return
 	}
-	a.pending[state] = Login{nonce, v, time.Now().Add(5 * time.Minute)}
+	a.pending[state] = Login{Nonce: nonce, Verifier: v, Expires: time.Now().Add(5 * time.Minute), Setup: r.URL.Query().Get("setup") == "1"}
 	a.mu.Unlock()
 	a.cookie(w, "mail_login", state, 300)
 	http.Redirect(w, r, o.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.SetAuthURLParam("code_challenge", base64.RawURLEncoding.EncodeToString(sum[:])), oauth2.SetAuthURLParam("code_challenge_method", "S256")), 302)
@@ -112,7 +113,10 @@ func (a *App) callback(w http.ResponseWriter, r *http.Request) {
 	if claims.Username == "" {
 		claims.Username = "user"
 	}
-	if a.sharedRoot == "" {
+	a.mu.RLock()
+	mainMail := a.cfg.MainMailURL
+	a.mu.RUnlock()
+	if !s.Setup && a.sharedRoot == "" && mainMail == "" {
 		if _, err := a.ensureMailboxes(ctx, []MailboxUser{{Subject: verified.Subject, Username: claims.Username, Name: claims.Name}}); err != nil {
 			fail(w, errors.New("Your mailbox address could not be prepared: "+err.Error()))
 			return
@@ -120,6 +124,10 @@ func (a *App) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	session := &Session{Auth: "Bearer " + token.AccessToken, Subject: verified.Subject, Name: claims.Name, Email: claims.Email, CSRF: platform.Token(), Expires: time.Now().Add(8 * time.Hour), TokenExpiry: token.Expiry, RefreshToken: token.RefreshToken}
 	a.newSession(w, session)
+	if s.Setup {
+		http.Redirect(w, r, a.base+"/setup", 302)
+		return
+	}
 	http.Redirect(w, r, a.base+"/", 302)
 }
 func (a *App) cookie(w http.ResponseWriter, name, value string, max int) {

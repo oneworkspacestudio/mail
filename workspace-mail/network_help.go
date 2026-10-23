@@ -72,7 +72,7 @@ func (a *App) retryIncoming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.mu.RLock()
-	managed := a.cfg.AutomaticHosting
+	managed := a.cfg.AutomaticHosting && a.cfg.MainMailURL == ""
 	a.mu.RUnlock()
 	if !managed {
 		fail(w, errors.New("Incoming setup is managed by the Workspace owner"))

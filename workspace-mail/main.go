@@ -32,6 +32,8 @@ var bundled embed.FS
 var version = "0.1.0-preview.1"
 
 type Config struct {
+	MainMailURL      string `json:"mainMailURL,omitempty"`
+	IndependentMail  bool   `json:"independentMail,omitempty"`
 	Hostname         string `json:"hostname"`
 	Domain           string `json:"domain"`
 	Origin           string `json:"origin"`
@@ -73,6 +75,11 @@ type App struct {
 	engine                     *exec.Cmd
 	held                       *os.File
 	client                     *http.Client
+	sharedProbeMu              sync.Mutex
+	sharedProbe                sharedMailPlan
+	sharedProbeAt              time.Time
+	networkMu                  sync.Mutex
+	networkCancel              context.CancelFunc
 	setupMu                    sync.Mutex
 	provisionMu                sync.Mutex
 	provisionError             string
@@ -161,7 +168,12 @@ func main() {
 			app.cfg.Origin = u.Scheme + "://" + u.Host
 		}
 	}
-	if !*legacy {
+	if app.cfg.MainMailURL != "" {
+		if _, err := mainMailURL(app.cfg.MainMailURL, app.cfg.Origin); err != nil {
+			log.Fatal("Invalid saved main Mail address: ", err)
+		}
+	}
+	if !*legacy && app.cfg.MainMailURL == "" {
 		app.sharedRoot = *sharedData
 		if _, legacyErr := os.Stat(filepath.Join(app.data, "engine.json")); legacyErr == nil {
 			log.Fatal("Legacy private Mail storage requires an explicit administrator migration; no shared backend was adopted.")
@@ -188,7 +200,7 @@ func main() {
 	if e = platform.SaveSecret(filepath.Join(absolute, "setup.dpapi"), map[string]string{"url": app.cfg.Origin + app.base + "/setup#" + app.setupToken}); e != nil {
 		log.Fatal(e)
 	}
-	if app.cfg.Configured && app.sharedRoot == "" {
+	if app.cfg.Configured && app.sharedRoot == "" && app.cfg.MainMailURL == "" {
 		if e = app.startEngine(); e != nil {
 			log.Fatal(e)
 		}
@@ -227,6 +239,9 @@ func main() {
 		writeJSON(w, map[string]any{"status": "ok", "version": version, "configured": ready})
 	})
 	mux.HandleFunc("GET /api/status", app.status)
+	mux.HandleFunc("GET /api/hosting/shared/status", app.sharedMailAvailability)
+	mux.HandleFunc("POST /api/hosting/shared/plan", app.planSharedMail)
+	mux.HandleFunc("POST /api/hosting/shared/apply", app.applySharedMail)
 	mux.HandleFunc("POST /api/setup", app.setup)
 	mux.HandleFunc("POST /api/identity/repair", app.repairIdentity)
 	mux.HandleFunc("POST /api/mailboxes/provision", app.provisionMailboxes)
@@ -306,7 +321,7 @@ func main() {
 	}
 }
 func (a *App) startEngine() error {
-	if a.sharedRoot != "" {
+	if a.sharedRoot != "" || a.cfg.MainMailURL != "" {
 		return nil
 	}
 	if err := a.startEngineMode(false); err != nil {

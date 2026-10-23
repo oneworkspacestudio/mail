@@ -54,7 +54,7 @@ func (a *App) status(w http.ResponseWriter, r *http.Request) {
 	inboundState, inboundMessage := a.inboundState, a.inboundMessage
 	help := a.inboundHelp
 	a.mu.RUnlock()
-	writeJSON(w, map[string]any{"configured": c.Configured, "hostname": c.Hostname, "domain": c.Domain, "origin": c.Origin, "issuer": c.Issuer, "clientId": c.ClientID, "oidc": c.Issuer != "", "base": a.base, "version": version, "callback": c.Origin + a.base + "/auth/callback", "smtpPort": c.SMTPPort, "enginePort": c.EnginePort, "managedHosting": c.AutomaticHosting, "hostingBusy": hostingBusy, "hostingPhase": hostingPhase, "hostingError": hostingError, "hostingIssue": issue, "identityError": identityError, "provisionError": provisionError, "inboundState": inboundState, "inboundHelp": help, "inboundMessage": inboundMessage, "pendingMailDomain": a.pendingMailDomain(), "smtpHostname": c.EngineHostname})
+	writeJSON(w, map[string]any{"mainMailURL": c.MainMailURL, "configured": c.Configured, "hostname": c.Hostname, "domain": c.Domain, "origin": c.Origin, "issuer": c.Issuer, "clientId": c.ClientID, "oidc": c.Issuer != "", "base": a.base, "version": version, "callback": c.Origin + a.base + "/auth/callback", "smtpPort": c.SMTPPort, "enginePort": c.EnginePort, "managedHosting": c.AutomaticHosting, "hostingBusy": hostingBusy, "hostingPhase": hostingPhase, "hostingError": hostingError, "hostingIssue": issue, "identityError": identityError, "provisionError": provisionError, "inboundState": inboundState, "inboundHelp": help, "inboundMessage": inboundMessage, "pendingMailDomain": a.pendingMailDomain(), "smtpHostname": c.EngineHostname})
 }
 func validURL(s string) bool {
 	u, e := url.Parse(s)
@@ -81,9 +81,14 @@ func (a *App) configureMail(parent context.Context, c Config) error {
 	a.mu.RLock()
 	old := a.cfg
 	a.mu.RUnlock()
+	if old.MainMailURL != "" {
+		return errors.New("This PC uses the main Mail service. Disconnect it in Mail settings before configuring a local server.")
+	}
 	if old.Configured {
 		return errors.New("This installation is already configured. Use the DNS step to connect its hostname; changing mailbox domains requires an administrator migration.")
 	}
+	c.MainMailURL = ""
+	c.IndependentMail = old.IndependentMail
 	c.Hostname = strings.ToLower(strings.TrimSpace(c.Hostname))
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
 	c.Origin = strings.TrimRight(c.Origin, "/")

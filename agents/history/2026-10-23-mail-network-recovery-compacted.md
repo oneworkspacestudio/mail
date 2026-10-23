@@ -40,3 +40,27 @@ fresh-installer workspace-mail.json marker. Remote check correctly refused19;
 no install was attempted. Prepare20 with a tracked managed-release generator and
 all three owned packages (Mail, license, notice), keeping paths/contracts intact.
 Keep19 and all published tags/assets unchanged; promote20 once verified.
+
+
+## Multi-PC Mail21 follow-up
+Owner confirmed the existing receiver remains main and approved connecting the
+secondary installation to the existing main Workspace Mail address. Generic
+setup must work without agent conversation. Added owner-controlled shared-service
+mode, early fresh-install discovery via optional zone TXT pointer / standard main
+hostname, explicit review and custom-address entry. HTTPS metadata probes use no
+credentials, no redirects, public pinned DNS and bounded time/body; readiness is
+cached/coalesced. Unavailable servers remain visibly unavailable, with automatic
+retry. Main accounts are used; no federation or email-based account merging.
+
+Local engine and incoming checks stop after selecting a main service; protected
+local state/messages remain. In-flight network work is cancelled and joined;
+settings login returns to /setup and does not require a local mailbox. Switching
+back resumes local startup and falls back to the previous shared connection if
+startup fails. Existing receiver rules remain untouched. This is shared access,
+not replicated stores or a multi-domain SMTP gateway.
+
+The confirmed main URL currently returns502. Local main installation is stopped
+while another Slicer update holds its configuration lock. Do not stop or replace
+that unrelated installer. One attempted normal main start refused the held lock;
+no running main suite was changed. Target secondary owner update to21 pending.
+All large source/build output is on I. No automated tests requested/run.

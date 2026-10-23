@@ -42,7 +42,7 @@ func (i *HostingIssue) Error() string {
 
 func (a *App) beginHosting(parent context.Context) {
 	a.mu.Lock()
-	if a.hostingBusy {
+	if a.hostingBusy || a.cfg.MainMailURL != "" {
 		a.mu.Unlock()
 		return
 	}
@@ -56,7 +56,12 @@ func (a *App) beginHosting(parent context.Context) {
 		defer cancel()
 		a.hostingProgress("Creating Mail and connecting your Workspace account…")
 		var e error
-		if !c.Configured {
+		if !c.Configured && !c.IndependentMail {
+			if main := a.suggestSharedMail(ctx, c, ""); main.Ready {
+				e = &HostingIssue{Code: "main_mail_available", Title: "An existing Mail service is available", Domain: main.Domain, Resolution: main.URL}
+			}
+		}
+		if e == nil && !c.Configured {
 			e = a.configureMail(ctx, c)
 			if e != nil {
 				a.stopEngine()
@@ -107,7 +112,7 @@ func (a *App) retryHosting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.mu.RLock()
-	managed := a.cfg.AutomaticHosting
+	managed := a.cfg.AutomaticHosting && a.cfg.MainMailURL == ""
 	a.mu.RUnlock()
 	if !managed {
 		fail(w, errors.New("automatic hosting is managed by the Workspace installer"))
@@ -139,6 +144,9 @@ func (a *App) configureHosting(ctx context.Context) error {
 	a.mu.RLock()
 	c := a.cfg
 	a.mu.RUnlock()
+	if c.MainMailURL != "" {
+		return errors.New("This PC uses the main Mail service")
+	}
 	if !c.Configured || !zonePattern.MatchString(c.DNSZone) || c.DNSToken == "" {
 		return errors.New("Workspace could not pass the domain connection to Mail; reopen the installer connection step")
 	}
