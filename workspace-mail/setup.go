@@ -52,8 +52,9 @@ func (a *App) status(w http.ResponseWriter, r *http.Request) {
 	}
 	provisionError := a.provisionError
 	inboundState, inboundMessage := a.inboundState, a.inboundMessage
+	help := a.inboundHelp
 	a.mu.RUnlock()
-	writeJSON(w, map[string]any{"configured": c.Configured, "hostname": c.Hostname, "domain": c.Domain, "origin": c.Origin, "issuer": c.Issuer, "clientId": c.ClientID, "oidc": c.Issuer != "", "base": a.base, "version": version, "callback": c.Origin + a.base + "/auth/callback", "smtpPort": c.SMTPPort, "enginePort": c.EnginePort, "managedHosting": c.AutomaticHosting, "hostingBusy": hostingBusy, "hostingPhase": hostingPhase, "hostingError": hostingError, "hostingIssue": issue, "identityError": identityError, "provisionError": provisionError, "inboundState": inboundState, "inboundMessage": inboundMessage, "pendingMailDomain": a.pendingMailDomain(), "smtpHostname": c.EngineHostname})
+	writeJSON(w, map[string]any{"configured": c.Configured, "hostname": c.Hostname, "domain": c.Domain, "origin": c.Origin, "issuer": c.Issuer, "clientId": c.ClientID, "oidc": c.Issuer != "", "base": a.base, "version": version, "callback": c.Origin + a.base + "/auth/callback", "smtpPort": c.SMTPPort, "enginePort": c.EnginePort, "managedHosting": c.AutomaticHosting, "hostingBusy": hostingBusy, "hostingPhase": hostingPhase, "hostingError": hostingError, "hostingIssue": issue, "identityError": identityError, "provisionError": provisionError, "inboundState": inboundState, "inboundHelp": help, "inboundMessage": inboundMessage, "pendingMailDomain": a.pendingMailDomain(), "smtpHostname": c.EngineHostname})
 }
 func validURL(s string) bool {
 	u, e := url.Parse(s)

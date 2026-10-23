@@ -125,3 +125,23 @@ DNS is skipped rather than taken over, even when both use the same public IP.
 The setup page offers Finish automatic setup, Open Mail and expandable DNS details.
 Internet delivery still depends on SMTP reachability, certificates and signing;
 successful DNS publication alone is not delivery verification.
+
+## Incoming mail connection and stable settings
+
+Mail checks the current network adapter's router directly as well as using
+multicast discovery. It repairs rules belonging to this installation. For a
+second router, it can create a missing rule only when the inner router reports
+its private outside address and the destination can be verified. Compatible
+existing forwarding is reused without deleting someone else's rule.
+
+**Repair connection** checks only the incoming network route; it does not rerun
+DNS or account setup. The page shows the current blocker and the next automatic
+check. Advanced settings and connection details stay open during refreshes;
+opening the settings form stops old status requests from replacing that form.
+
+If the page says **Another PC already receives your email**, a different email
+subdomain alone cannot solve it. Both subdomains reach the same public SMTP
+port. Keep one shared mail receiver and configure its domain routing, or plan
+to move incoming mail to the new server. Mail preserves the current receiver
+until that decision is made. It cannot enable a router's restricted settings or
+override an ISP block without permission or an accessible incoming gateway.

@@ -78,6 +78,7 @@ type App struct {
 	provisionError             string
 	inboundState               string
 	inboundMessage             string
+	inboundHelp                inboundHelp
 	inboundRetry               chan struct{}
 	engineDone                 chan struct{}
 	restarting                 bool
@@ -235,6 +236,7 @@ func main() {
 	mux.HandleFunc("POST /api/dns/apply", app.dnsApply)
 	mux.HandleFunc("POST /api/delivery", app.delivery)
 	mux.HandleFunc("POST /api/hosting/retry", app.retryHosting)
+	mux.HandleFunc("POST /api/hosting/network/retry", app.retryIncoming)
 	mux.HandleFunc("GET /auth/login", app.login)
 	mux.HandleFunc("GET /auth/callback", app.callback)
 	mux.HandleFunc("POST /auth/password", app.passwordLogin)

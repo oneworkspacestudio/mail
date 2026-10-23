@@ -12,7 +12,49 @@ import (
 	"regexp"
 	"syscall"
 	"time"
+	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
+
+// Read the gateway of the adapter carrying this connection. This avoids
+// guessing an address and works when a VPN or a second adapter is present.
+func mailDefaultGateway(local net.IP) net.IP {
+	size := uint32(16384)
+	for n := 0; n < 3 && size <= 1<<20; n++ {
+		buffer := make([]byte, size)
+		first := (*windows.IpAdapterAddresses)(unsafe.Pointer(&buffer[0]))
+		err := windows.GetAdaptersAddresses(windows.AF_INET, windows.GAA_FLAG_INCLUDE_GATEWAYS, 0, first, &size)
+		if err == windows.ERROR_BUFFER_OVERFLOW {
+			continue
+		}
+		if err != nil {
+			return nil
+		}
+		for adapter := first; adapter != nil; adapter = adapter.Next {
+			matched := false
+			for addr := adapter.FirstUnicastAddress; addr != nil; addr = addr.Next {
+				if addr.Address.Sockaddr != nil && addr.Address.IP().Equal(local) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+			for gateway := adapter.FirstGatewayAddress; gateway != nil; gateway = gateway.Next {
+				if gateway.Address.Sockaddr != nil {
+					ip := gateway.Address.IP()
+					if ip.To4() != nil && ip.IsPrivate() && !ip.IsLoopback() {
+						return append(net.IP(nil), ip...)
+					}
+				}
+			}
+		}
+		return nil
+	}
+	return nil
+}
 
 // Some mesh gateways report the outer public IP even behind another NAT.
 // Use bounded header-only ICMP route discovery, without router credentials.

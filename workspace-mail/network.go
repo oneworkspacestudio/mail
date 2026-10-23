@@ -30,13 +30,18 @@ type igdDevice struct {
 	Devices  []igdDevice  `xml:"deviceList>device"`
 }
 type igdDescription struct {
-	Device igdDevice `xml:"device"`
+	Device  igdDevice `xml:"device"`
+	URLBase string    `xml:"URLBase"`
 }
 
 func (a *App) inboundProgress(state, message string) {
 	a.mu.Lock()
 	a.inboundState = state
 	a.inboundMessage = message
+	if state == "checking" {
+		a.inboundHelp = incomingHelp(state, nil)
+		a.inboundHelp.NextCheck = time.Time{}
+	}
 	a.mu.Unlock()
 }
 
@@ -68,6 +73,9 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 				}
 			}
 			cancel()
+			a.mu.Lock()
+			a.inboundHelp = incomingHelp(state, routeErr)
+			a.mu.Unlock()
 			if state == "reachable" && routeErr == nil {
 				a.inboundProgress(state, probeMessage+" "+routeMessage)
 			} else if routeErr != nil {
@@ -206,11 +214,11 @@ func configureInboundRoute(ctx context.Context, hostname, description string) (s
 	}
 	gateway, err := discoverMailGateway(ctx, local)
 	if err != nil {
-		return "", nil, fmt.Errorf("Enable router UPnP or forward public TCP25 to %s:25. Incoming mail cannot use the HTTPS web tunnel. Setup retries automatically.", local)
+		return "", nil, &inboundRouteIssue{Code: "router_permission", Message: "The router did not accept automatic incoming-mail setup.", Router: mailDefaultGateway(local).String(), Target: local.String()}
 	}
 	addresses, err := net.DefaultResolver.LookupIP(ctx, "ip4", hostname)
 	if err != nil {
-		return "", nil, errors.New("Waiting for the SMTP hostname's public DNS address. Setup retries automatically.")
+		return "", nil, &inboundRouteIssue{Code: "dns_pending", Message: "Waiting for the email address to connect to this server."}
 	}
 	fields, err := gateway.action(ctx, "GetExternalIPAddress", nil)
 	if err != nil {
@@ -248,7 +256,11 @@ func configureInboundRoute(ctx context.Context, hostname, description string) (s
 		if e != nil {
 			return message, routes, fmt.Errorf("Another private router hop (%s) was detected. Its TCP25 forwarding could not be managed. Forward TCP25 through each router to this PC, or use an inbound gateway. Setup retries automatically.", hop)
 		}
-		route, e := renewUpstreamSMTP(ctx, upstream, hop, description, migrating && len(routes) > 0)
+		var downstream net.IP
+		if len(routes) > 0 && external.IsPrivate() {
+			downstream = external
+		}
+		route, e := renewUpstreamSMTP(ctx, upstream, hop, description, migrating && len(routes) > 0, downstream)
 		if e != nil {
 			return message, routes, e
 		}
@@ -267,13 +279,31 @@ func smtpMappingQuery() map[string]string {
 	return map[string]string{"NewRemoteHost": "", "NewExternalPort": "25", "NewProtocol": "TCP"}
 }
 
-func renewUpstreamSMTP(ctx context.Context, gateway mailGateway, hop net.IP, description string, allowLegacy bool) (smtpRoute, error) {
+func renewUpstreamSMTP(ctx context.Context, gateway mailGateway, hop net.IP, description string, allowLegacy bool, downstream ...net.IP) (smtpRoute, error) {
 	f, err := gateway.action(ctx, "GetSpecificPortMappingEntry", smtpMappingQuery())
+	// The inner gateway's private WAN address proves the next target. Do not
+	// guess from traceroute or replace another receiver's outer router rule.
+	if len(downstream) > 0 && downstream[0] != nil {
+		ip := downstream[0]
+		verified := ip.IsPrivate() && !ip.Equal(hop) && ip.Mask(net.CIDRMask(24, 32)).Equal(hop.Mask(net.CIDRMask(24, 32)))
+		var fault *gatewayError
+		if verified && errors.As(err, &fault) && fault.Code == "714" {
+			if _, e := gateway.ensureSMTP(ctx, ip.String(), description); e != nil {
+				return smtpRoute{}, e
+			}
+			return smtpRoute{gateway, ip.String(), description}, nil
+		}
+		if verified && err == nil && f["NewInternalClient"] == ip.String() && f["NewInternalPort"] == "25" && f["NewEnabled"] == "1" && f["NewPortMappingDescription"] != description {
+			// Compatible existing forwarding is used unchanged. Empty description
+			// explicitly excludes it from this installation's destructive refresh.
+			return smtpRoute{gateway, ip.String(), ""}, nil
+		}
+	}
 	target := net.ParseIP(f["NewInternalClient"])
 	sameSubnet := target != nil && target.To4() != nil && target.IsPrivate() && target.Mask(net.CIDRMask(24, 32)).Equal(hop.Mask(net.CIDRMask(24, 32))) && !target.Equal(hop)
 	owned := f["NewPortMappingDescription"] == description || allowLegacy && f["NewPortMappingDescription"] == smtpMappingDescription
 	if err != nil || !sameSubnet || !owned || f["NewInternalPort"] != "25" || f["NewEnabled"] != "1" {
-		return smtpRoute{}, fmt.Errorf("Upstream router %s has no confirmed rule belonging to this Mail installation. Existing routes were preserved. Forward TCP25 to the downstream router in its settings, then retry Mail setup.", hop)
+		return smtpRoute{}, &inboundRouteIssue{Code: "upstream_router", Message: "An upstream router needs permission to finish incoming-mail setup.", Router: hop.String()}
 	}
 	_, err = gateway.ensureSMTP(ctx, target.String(), description)
 	if err != nil {
@@ -286,6 +316,9 @@ func refreshOwnedMailRoutes(ctx context.Context, routes []smtpRoute) error {
 	// Refresh outer rules first; only exact verified ownership and targets qualify.
 	for i := len(routes) - 1; i >= 0; i-- {
 		route := routes[i]
+		if route.Description == "" {
+			continue
+		}
 		f, err := route.Gateway.action(ctx, "GetSpecificPortMappingEntry", smtpMappingQuery())
 		if err != nil || f["NewInternalClient"] != route.Target || f["NewInternalPort"] != "25" || f["NewEnabled"] != "1" || f["NewPortMappingDescription"] != route.Description {
 			return errors.New("Router rule changed; automatic recovery preserved it")
@@ -307,13 +340,20 @@ func discoverMailGateway(ctx context.Context, local net.IP, upstream ...net.IP) 
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
-	request := "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n"
-	destination := net.IPv4(239, 255, 255, 250)
+	targets := []net.IP{net.IPv4(239, 255, 255, 250)}
 	if len(upstream) > 0 {
-		destination = upstream[0]
+		targets = []net.IP{upstream[0]}
+	} else if gateway := mailDefaultGateway(local); gateway != nil {
+		targets = append(targets, gateway)
 	}
-	if _, err = conn.WriteToUDP([]byte(request), &net.UDPAddr{IP: destination, Port: 1900}); err != nil {
-		return mailGateway{}, err
+	searches := []string{"urn:schemas-upnp-org:device:InternetGatewayDevice:1", "urn:schemas-upnp-org:service:WANIPConnection:1", "ssdp:all"}
+	for _, destination := range targets {
+		for _, search := range searches {
+			request := "M-SEARCH * HTTP/1.1\r\nHOST: " + net.JoinHostPort(destination.String(), "1900") + "\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: " + search + "\r\n\r\n"
+			if _, err = conn.WriteToUDP([]byte(request), &net.UDPAddr{IP: destination, Port: 1900}); err != nil {
+				return mailGateway{}, err
+			}
+		}
 	}
 	buffer := make([]byte, 8192)
 	for {
@@ -348,6 +388,9 @@ func discoverMailGateway(ctx context.Context, local net.IP, upstream ...net.IP) 
 			continue
 		}
 		base, _ := url.Parse(location)
+		if gatewayEndpoint(description.URLBase, peer.IP) {
+			base, _ = url.Parse(description.URLBase)
+		}
 		var find func(igdDevice) (mailGateway, bool)
 		find = func(device igdDevice) (mailGateway, bool) {
 			for _, service := range device.Services {
@@ -465,7 +508,7 @@ func (g mailGateway) ensureSMTP(ctx context.Context, local string, owner ...stri
 	existing, err := g.action(ctx, "GetSpecificPortMappingEntry", query)
 	if err == nil {
 		if existing["NewInternalClient"] != local || existing["NewInternalPort"] != "25" {
-			return "", errors.New("Router TCP25 already belongs to another server. Its route was preserved; migrate it explicitly or use an inbound mail gateway.")
+			return "", &inboundRouteIssue{Code: "other_mail_server", Message: "Incoming email already goes to another PC. Its route was preserved.", Router: routerHost(g.Control), Target: existing["NewInternalClient"]}
 		}
 		if existing["NewEnabled"] != "1" {
 			return "", errors.New("An existing TCP25 router rule is disabled. Review it in the router before receiving mail.")
@@ -508,4 +551,12 @@ func (g mailGateway) ensureSMTP(ctx context.Context, local string, owner ...stri
 		return "", errors.New("Router forwarding was not confirmed. Review the TCP25 rule before expecting incoming mail.")
 	}
 	return "Router TCP25 forwarding is configured and renewed automatically. Gmail and other senders can retry pending mail; successful inbox delivery is checked separately.", nil
+}
+
+func routerHost(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
 }
