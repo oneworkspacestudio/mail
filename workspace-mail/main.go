@@ -234,7 +234,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		app.mu.RLock()
-		ready := app.cfg.Configured
+		ready := app.cfg.Configured || app.cfg.MainMailURL != ""
 		app.mu.RUnlock()
 		writeJSON(w, map[string]any{"status": "ok", "version": version, "configured": ready})
 	})

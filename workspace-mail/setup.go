@@ -54,7 +54,17 @@ func (a *App) status(w http.ResponseWriter, r *http.Request) {
 	inboundState, inboundMessage := a.inboundState, a.inboundMessage
 	help := a.inboundHelp
 	a.mu.RUnlock()
-	writeJSON(w, map[string]any{"mainMailURL": c.MainMailURL, "configured": c.Configured, "hostname": c.Hostname, "domain": c.Domain, "origin": c.Origin, "issuer": c.Issuer, "clientId": c.ClientID, "oidc": c.Issuer != "", "base": a.base, "version": version, "callback": c.Origin + a.base + "/auth/callback", "smtpPort": c.SMTPPort, "enginePort": c.EnginePort, "managedHosting": c.AutomaticHosting, "hostingBusy": hostingBusy, "hostingPhase": hostingPhase, "hostingError": hostingError, "hostingIssue": issue, "identityError": identityError, "provisionError": provisionError, "inboundState": inboundState, "inboundHelp": help, "inboundMessage": inboundMessage, "pendingMailDomain": a.pendingMailDomain(), "smtpHostname": c.EngineHostname})
+	if c.MainMailURL != "" {
+		hostingBusy = false
+		hostingError = ""
+		issue = nil
+		identityError = ""
+		provisionError = ""
+		hostingPhase = "This PC uses the main Mail service; incoming mail is handled there."
+		inboundState = "shared"
+		inboundMessage = hostingPhase
+	}
+	writeJSON(w, map[string]any{"mainMailURL": c.MainMailURL, "configured": c.Configured || c.MainMailURL != "", "localConfigured": c.Configured, "hostname": c.Hostname, "domain": c.Domain, "origin": c.Origin, "issuer": c.Issuer, "clientId": c.ClientID, "oidc": c.Issuer != "", "base": a.base, "version": version, "callback": c.Origin + a.base + "/auth/callback", "smtpPort": c.SMTPPort, "enginePort": c.EnginePort, "managedHosting": c.AutomaticHosting, "hostingBusy": hostingBusy, "hostingPhase": hostingPhase, "hostingError": hostingError, "hostingIssue": issue, "identityError": identityError, "provisionError": provisionError, "inboundState": inboundState, "inboundHelp": help, "inboundMessage": inboundMessage, "pendingMailDomain": a.pendingMailDomain(), "smtpHostname": c.EngineHostname})
 }
 func validURL(s string) bool {
 	u, e := url.Parse(s)

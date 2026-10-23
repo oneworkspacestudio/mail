@@ -51,7 +51,10 @@ This PC's private engine and incoming-router checks stop. Local messages/setting
 are retained, not migrated. **Mail settings** at `/mail/setup` lets the owner
 change the address or resume the separate local server. Everyone uses accounts
 on the main installation; separate MyAccounts issuers are never merged by email.
-Discovery uses public HTTPS metadata without credentials or OAuth tokens.
+Discovery uses public HTTPS metadata without credentials or OAuth tokens. Existing
+Workspace sign-in protection is retained; when Mail metadata requires sign-in,
+the public Workspace health response confirms only that its Mail process is
+running. This availability check does not prove message delivery.
 
 One public SMTP port cannot forward independently to multiple PCs just because
 their email subdomains differ. Independent stores need a routing/queue gateway

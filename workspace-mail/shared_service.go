@@ -79,6 +79,32 @@ func inspectMainMail(ctx context.Context, target string) sharedMailPlan {
 		return plan
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized && u.Path == "/mail/" {
+		var gate struct {
+			Error string `json:"error"`
+			Login string `json:"login"`
+		}
+		if json.NewDecoder(io.LimitReader(resp.Body, 16384)).Decode(&gate) == nil && gate.Error == "Sign in to One Workspace" && gate.Login == "/auth/login" {
+			// Older managers protect Mail metadata along with every app request.
+			// Confirm only public process availability; preserve the login gate.
+			healthURL := *u
+			healthURL.Path = "/healthz"
+			healthReq, _ := http.NewRequestWithContext(ctx, "GET", healthURL.String(), nil)
+			healthReq.Header.Set("Accept", "application/json")
+			if healthResp, e := client.Do(healthReq); e == nil {
+				defer healthResp.Body.Close()
+				var health struct {
+					Status string            `json:"status"`
+					Apps   map[string]string `json:"apps"`
+				}
+				if healthResp.StatusCode == http.StatusOK && json.NewDecoder(io.LimitReader(healthResp.Body, 64<<10)).Decode(&health) == nil && health.Status == "ok" && health.Apps["mail"] == "running" {
+					plan.Ready = true
+					plan.Message = "The main Workspace Mail service is running and requires sign-in. Use its MyAccounts account when Mail opens. Mailbox setup and message delivery are not verified by this availability check."
+				}
+			}
+		}
+		return plan
+	}
 	if resp.StatusCode != http.StatusOK {
 		return plan
 	}

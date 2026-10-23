@@ -64,3 +64,13 @@ while another Slicer update holds its configuration lock. Do not stop or replace
 that unrelated installer. One attempted normal main start refused the held lock;
 no running main suite was changed. Target secondary owner update to21 pending.
 All large source/build output is on I. No automated tests requested/run.
+
+
+Mail21 publication prompted an operational compatibility correction before
+installing it: existing Workspace managers correctly return401 for anonymous Mail
+metadata. Mail22 retains that gate and recognizes only its exact401 response plus
+public /healthz with Mail running, describing process availability without claiming
+mailbox setup/delivery. Standalone public Mail metadata remains supported. Fresh
+shared clients report readiness to the manager without a local mailbox; settings
+and local OIDC stay protected. A browser handoff marker stops automatic satellite
+forwarding chains. No manager authentication protection was relaxed.
