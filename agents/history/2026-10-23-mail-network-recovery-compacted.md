@@ -138,3 +138,20 @@ and newest verified rollback kept. Source/public channel/installer integration i
 complete. See Workspace's October24 concurrent-sign-in handoff for the separate
 portal-cookie collision found during final checking and fixed in manager78.
 No clean-host, physical reboot, arbitrary-provider/router or production claim.
+
+## October24: automatic per-server connection proof
+User correctly reported that24 still exposed repair/router guidance on the main
+service reached from the secondary. Wording alone did not resolve the state.
+Mail25 correlates the existing external TCP probe's successful node, resolved
+target and current attempt window with this engine's public SMTP connection-start
+metadata. The bounded in-memory observer rejects unrelated, stale, LAN, other-port
+and other-listener events. Only the narrow connection-start event is promoted
+to info through native registry/reload; raw/debug payload logging stays disabled.
+Verified proof takes precedence over unavailable router inspection, clears stale
+error/details/actions and keeps healthy state during periodic monitoring. Failures
+are re-evaluated every five minutes, never inferred from generic public TCP alone.
+Existing routes, identities, shared mode and messages are retained.
+Synthetic correlation/router regression and isolated native bootstrap/reload
+checks passed; native fixture used named protected NTFS scratch with ephemeral
+loopback ports. No live MyAccounts/FileBrowser fixture was used. Publication and
+real two-PC deployment still pending at this source checkpoint.

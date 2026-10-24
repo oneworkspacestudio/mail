@@ -28,6 +28,12 @@ func incomingHelp(state string, err error) inboundHelp {
 	}
 	help := inboundHelp{Code: state, Title: "Checking incoming mail", Summary: "Mail is checking the connection and repairing its own router rules automatically."}
 	switch state {
+	case "verified":
+		help.Title = "Incoming connection verified"
+		help.Summary = "An outside connection reached this Mail server. Mail is ready to receive email. No router changes are needed."
+		// Successful per-server proof takes precedence over unavailable inspection.
+		help.NextCheck = time.Now().UTC().Add(5 * time.Minute)
+		return help
 	case "reachable":
 		help.Title = "Incoming connection is available"
 		help.Summary = "The public connection is reachable. This does not yet confirm message delivery."

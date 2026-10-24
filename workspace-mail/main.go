@@ -86,6 +86,8 @@ type App struct {
 	inboundState               string
 	inboundMessage             string
 	inboundHelp                inboundHelp
+	smtpObservation            smtpObservation
+	probeLoggingReady          bool
 	inboundRetry               chan struct{}
 	engineDone                 chan struct{}
 	restarting                 bool
@@ -403,7 +405,7 @@ func (a *App) startEngineMode(recoveryMode bool) error {
 		a.held.Close()
 		return e
 	}
-	filtered := &engineLog{out: logFile, secrets: []string{recovery["password"], c.ClientSecret, c.RelaySecret, c.DNSToken}}
+	filtered := &engineLog{observe: a.smtpObservation.observe, out: logFile, secrets: []string{recovery["password"], c.ClientSecret, c.RelaySecret, c.DNSToken}}
 	cmd.Stdout = filtered
 	cmd.Stderr = filtered
 	if e = a.job.Start(cmd); e != nil {

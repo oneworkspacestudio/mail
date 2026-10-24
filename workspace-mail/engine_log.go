@@ -18,6 +18,7 @@ type engineLog struct {
 	out     io.Writer
 	pending []byte
 	secrets []string
+	observe func(string)
 }
 
 func (l *engineLog) Write(b []byte) (int, error) {
@@ -40,6 +41,9 @@ func (l *engineLog) Write(b []byte) (int, error) {
 			if s != "" {
 				line = strings.ReplaceAll(line, s, "[redacted-secret]")
 			}
+		}
+		if l.observe != nil {
+			l.observe(line)
 		}
 		if _, e := io.WriteString(l.out, line); e != nil {
 			return n, e

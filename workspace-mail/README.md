@@ -280,3 +280,15 @@ Automatic router inspection and message delivery are separate checks. An upstrea
 router may reject inspection even when its manually configured forwarding works.
 Mail explains that distinction and preserves a working connection; it does not
 ask people to enable UPnP again merely because inspection is unavailable.
+
+## Automatic incoming connection checks
+
+Mail checks from outside your network and matches the probe with a connection
+seen by this specific mail server. Working manual router forwarding is accepted
+automatically, including routers that cannot be inspected through another router.
+A verified connection clears repair guidance; background monitoring continues.
+A public port that reaches a different PC is not accepted as proof. No mailbox
+content or credentials are sent to the checking service. Only the public SMTP
+hostname is shared with Check-Host. This verifies connectivity, not message
+delivery or spam placement. Router permissions and ISP blocks may still require
+the network owner's help when a connection really cannot be established.

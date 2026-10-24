@@ -117,7 +117,7 @@ function hostingPage(){
  right.append(sourceLink());card.append(left,right);wrap.append(card);root.append(wrap);
  for(const d of root.querySelectorAll('details[data-mail-panel]'))d.open=opened.has(d.dataset.mailPanel);
  right.append(el('p','muted hosting-connection'));
- if(status.hostingBusy||['checking','attention','unverified'].includes(status.inboundState))pollHosting(generation);
+ if(status.managedHosting||status.hostingBusy)pollHosting(generation);
 }
 function pollHosting(generation,delay=3000){
  hostingTimer=setTimeout(async()=>{
@@ -142,19 +142,19 @@ async function repairIncoming(){
  }catch(e){if(b)b.disabled=false;const n=root.querySelector('.incoming-action-error');if(n)n.textContent=e.message;else throw e}
 }
 function incomingSetupCard(){
- const h=status.inboundHelp||{},checking=status.inboundState==='checking';
+ const h=status.inboundHelp||{},checking=status.inboundState==='checking',healthy=['reachable','verified'].includes(status.inboundState);
  const card=el('section','incoming-setup');
  card.append(el('h3','',checking?'Checking the incoming connection…':h.title||'Incoming mail needs a connection'),el('p','',checking?'Mail is checking your router and repairing the rules it owns.':h.summary||'Your mailbox is ready. Mail is still checking whether incoming email can reach this server.'));
  if(checking){const progress=el('progress');progress.setAttribute('aria-label','Checking incoming mail');card.append(progress)}
  if(h.code==='other_mail_server'&&h.target)card.append(el('p','notice','The current receiver is '+h.target+'. Its email route has been kept.'));
  if(!checking&&h.nextCheck){const when=new Date(h.nextCheck);if(Number.isFinite(when.getTime()))card.append(el('p','muted','Next automatic check: '+when.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})))}
  const actions=el('div','recovery-actions');
- if(canManageMail()&&status.inboundState!=='reachable'){const retry=button('Repair connection',repairIncoming,'pill repair-incoming');retry.disabled=checking;actions.append(retry)}
- if(h.routerURL&&canManageMail()){
+ if(canManageMail()&&!healthy){const retry=button(checking?'Checking connection…':'Repair connection',repairIncoming,'pill repair-incoming');retry.disabled=checking;actions.append(retry)}
+ if(!healthy&&h.routerURL&&canManageMail()){
   try{const u=new URL(h.routerURL);if(u.protocol==='http:'&&/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(u.hostname)){const link=el('a','pill','Open router settings');link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);card.append(el('p','muted','Router settings open from the server or a device on the same network. Router sign-in may be required.'))}}catch{}
  }
  card.append(actions,el('p','incoming-action-error'));
- const details=el('details');details.dataset.mailPanel='incoming';details.append(el('summary','','Connection details'),el('p','muted',status.inboundMessage||''),el('p','muted',status.hostingPhase||''));card.append(details);
+ const details=el('details');details.dataset.mailPanel='incoming';details.append(el('summary','','Connection details'),el('p','muted',status.inboundMessage||''));if(!healthy)details.append(el('p','muted',status.hostingPhase||''));card.append(details);
  return card;
 }
 

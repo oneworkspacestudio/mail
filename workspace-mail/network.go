@@ -52,6 +52,7 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 		a.networkMu.Lock()
 		a.mu.RLock()
 		c := a.cfg
+		previousState := a.inboundState
 		chooseMain := a.hostingIssue != nil && a.hostingIssue.Code == "main_mail_available"
 		a.mu.RUnlock()
 		delay := 5 * time.Minute
@@ -63,7 +64,11 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 			a.inboundProgress("checking", "Waiting for the mail server to finish setup.")
 			delay = 5 * time.Second
 		} else {
-			a.inboundProgress("checking", "Checking router forwarding and public TCP25 reachability…")
+			// Routine monitoring must not make a verified working service look
+			// broken while its next check is in progress.
+			if previousState != "verified" {
+				a.inboundProgress("checking", "Checking router forwarding and public TCP25 reachability…")
+			}
 			attempt, cancel := context.WithTimeout(ctx, 90*time.Second)
 			a.mu.Lock()
 			a.networkCancel = cancel
@@ -72,11 +77,14 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 			// Stay below routers' common 31-character description limit.
 			description := "Workspace Mail " + hex.EncodeToString(ownerHash[:6])
 			routeMessage, routes, routeErr := configureInboundRoute(attempt, c.EngineHostname, description)
-			state, probeMessage := checkIncomingSMTP(attempt, c.EngineHostname)
+			if !a.probeLoggingReady {
+				a.probeLoggingReady = a.ensureSMTPObservation(attempt) == nil
+			}
+			state, probeMessage := a.checkIncomingSMTP(attempt, c.EngineHostname)
 			if state == "attention" && routeErr == nil && len(routes) > 0 {
 				a.inboundProgress("checking", "The public connection failed. Refreshing this installation's verified router rules and checking again…")
 				if err := refreshOwnedMailRoutes(attempt, routes); err == nil {
-					state, probeMessage = checkIncomingSMTP(attempt, c.EngineHostname)
+					state, probeMessage = a.checkIncomingSMTP(attempt, c.EngineHostname)
 				} else {
 					routeErr = fmt.Errorf("Automatic router recovery could not finish: %w. Review incoming Mail settings", err)
 				}
@@ -84,9 +92,14 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 			cancel()
 			a.mu.Lock()
 			a.networkCancel = nil
+			if state == "verified" {
+				routeErr = nil
+			}
 			a.inboundHelp = incomingHelp(state, routeErr)
 			a.mu.Unlock()
-			if state == "reachable" && routeErr == nil {
+			if state == "verified" {
+				a.inboundProgress(state, probeMessage)
+			} else if state == "reachable" && routeErr == nil {
 				a.inboundProgress(state, probeMessage+" "+routeMessage)
 			} else if routeErr != nil {
 				if state == "reachable" {
@@ -110,7 +123,7 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 
 // The public probe receives only the public SMTP hostname, never messages or
 // credentials. A TCP connection proves reachability, not successful delivery.
-func checkIncomingSMTP(ctx context.Context, hostname string) (string, string) {
+func (a *App) checkIncomingSMTP(ctx context.Context, hostname string) (string, string) {
 	addresses, err := net.DefaultResolver.LookupIP(ctx, "ip4", hostname)
 	if err != nil || len(addresses) == 0 {
 		return "unverified", "The SMTP DNS address could not be checked. Setup will retry automatically."
@@ -137,8 +150,10 @@ func checkIncomingSMTP(ctx context.Context, hostname string) (string, string) {
 		}
 		return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(out)
 	}
+	since := time.Now()
 	var started struct {
-		ID string `json:"request_id"`
+		ID    string              `json:"request_id"`
+		Nodes map[string][]string `json:"nodes"`
 	}
 	if err = get("https://check-host.net/check-tcp?host="+url.QueryEscape(net.JoinHostPort(hostname, "25"))+"&max_nodes=3", &started); err != nil || !validProbeID(started.ID) {
 		return "unverified", "External connection check is unavailable. Incoming mail is not yet verified; setup retries automatically. The check shares only your public SMTP hostname with Check-Host."
@@ -155,6 +170,18 @@ func checkIncomingSMTP(ctx context.Context, hostname string) (string, string) {
 		}
 		state := incomingProbeState(results)
 		if state == "reachable" {
+			// The external TCP check can finish before the engine flushes its
+			// connection event. Wait briefly for the matching local observation.
+			for wait := 0; wait < 20; wait++ {
+				if a.smtpObservation.confirms(since, started.Nodes, results, addresses) {
+					return "verified", "An external check reached this Mail server on TCP25. Your incoming connection is working; no router change is needed. This checks the connection, not message delivery or spam placement."
+				}
+				select {
+				case <-ctx.Done():
+					return "unverified", "The external connection check timed out. Mail will check again automatically."
+				case <-time.After(100 * time.Millisecond):
+				}
+			}
 			return state, "Public TCP25 is reachable from an external network. This confirms the incoming connection, not message delivery or spam placement."
 		}
 		if state == "attention" {
