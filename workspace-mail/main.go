@@ -405,6 +405,7 @@ func (a *App) startEngineMode(recoveryMode bool) error {
 		a.held.Close()
 		return e
 	}
+	a.smtpObservation.restoreReceipts(filepath.Join(a.data, "engine.log"))
 	filtered := &engineLog{observe: a.smtpObservation.observe, out: logFile, secrets: []string{recovery["password"], c.ClientSecret, c.RelaySecret, c.DNSToken}}
 	cmd.Stdout = filtered
 	cmd.Stderr = filtered

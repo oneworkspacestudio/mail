@@ -28,6 +28,11 @@ func incomingHelp(state string, err error) inboundHelp {
 	}
 	help := inboundHelp{Code: state, Title: "Checking incoming mail", Summary: "Mail is checking the connection and repairing its own router rules automatically."}
 	switch state {
+	case "receiving":
+		help.Title = "Incoming mail received"
+		help.Summary = "This server recently accepted Internet email for your mail domain. Your working router settings are kept. Automatic connection checks continue."
+		help.NextCheck = time.Now().UTC().Add(5 * time.Minute)
+		return help
 	case "verified":
 		help.Title = "Incoming connection verified"
 		help.Summary = "An outside connection reached this Mail server. Mail is ready to receive email. No router changes are needed."

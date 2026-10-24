@@ -73,6 +73,54 @@ func TestVerifiedIncomingHelp(t *testing.T) {
 	}
 }
 
+func TestIncomingReceiptEvidence(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	line := now.Format(time.RFC3339) + ` INFO Queued message for delivery (queue.message-queued) listenerId = "workspace-internet-smtp", localPort = 25, remoteIp = 8.8.8.8, remotePort = 40000, queueId = 123, from = "sender@example.test", to = ["person@example.test"], size = 1000`
+	for _, tt := range []struct {
+		name, line, domain, state, code string
+		want                            bool
+	}{
+		{"accepted", line, "example.test", "unverified", "upstream_router", true},
+		{"public-port", line, "example.test", "reachable", "router_permission", true},
+		{"wrong-domain", line, "other.test", "unverified", "upstream_router", false},
+		{"private", strings.ReplaceAll(line, "8.8.8.8", "192.168.1.20"), "example.test", "unverified", "upstream_router", false},
+		{"outgoing", strings.ReplaceAll(line, "workspace-internet-smtp", "smtp"), "example.test", "unverified", "upstream_router", false},
+		{"wrong-port", strings.ReplaceAll(line, "localPort = 25,", "localPort = 2525,"), "example.test", "unverified", "upstream_router", false},
+		{"rejected", strings.ReplaceAll(line, "queue.message-queued", "smtp.rcpt-to"), "example.test", "unverified", "upstream_router", false},
+		{"expired", strings.Replace(line, now.Format(time.RFC3339), now.Add(-3*time.Hour).Format(time.RFC3339), 1), "example.test", "unverified", "upstream_router", false},
+		{"future", strings.Replace(line, now.Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339), 1), "example.test", "unverified", "upstream_router", false},
+		{"blocked-now", line, "example.test", "attention", "upstream_router", false},
+		{"other-receiver", line, "example.test", "unverified", "other_mail_server", false},
+		{"dns-mismatch", line, "example.test", "unverified", "dns_pending", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			a := App{}
+			a.smtpObservation.observe(tt.line)
+			state, message, help, ok := a.incomingReceiptStatus(tt.state, tt.domain, inboundHelp{Code: tt.code, RouterURL: "http://192.168.1.1/"})
+			if ok != tt.want {
+				t.Fatalf("accepted=%v want %v", ok, tt.want)
+			}
+			if ok && (state != "receiving" || help.RouterURL != "" || strings.Contains(message, "person@") || strings.Contains(message, "sender@")) {
+				t.Fatal("stale action or private address in receipt status")
+			}
+		})
+	}
+	// Private native metadata survives restart; old public probe observations do
+	// not. A bounded suffix read never loads arbitrary mailbox content.
+	p := filepath.Join(t.TempDir(), "engine.log")
+	if err := os.WriteFile(p, []byte(line+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a := App{}
+	a.smtpObservation.restoreReceipts(p)
+	if _, _, _, ok := a.incomingReceiptStatus("unverified", "example.test", inboundHelp{Code: "unverified"}); !ok {
+		t.Fatal("receipt lost on restart")
+	}
+	if len(a.smtpObservation.connections) != 0 {
+		t.Fatal("historical connections restored as live probe proof")
+	}
+}
+
 func TestNativeSMTPObservation(t *testing.T) {
 	if os.Getenv("WORKSPACE_MAIL_NATIVE_TEST") != "1" {
 		t.Skip("requires isolated native fixture opt-in")

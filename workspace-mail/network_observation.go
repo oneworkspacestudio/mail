@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"os"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,6 +18,7 @@ import (
 type smtpObservation struct {
 	mu          sync.Mutex
 	connections []smtpConnection
+	receipts    map[string]time.Time
 }
 type smtpConnection struct {
 	ip string
@@ -26,8 +29,106 @@ var smtpStart = regexp.MustCompile(`^\d{4}-\d\d-\d\dT[0-9:.]+Z (?:INFO|DEBUG) SM
 var smtpPeer = regexp.MustCompile(`(?:^|, )remoteIp = ([0-9.]+)(?:,|\s*$)`)
 var smtpListener = regexp.MustCompile(`(?:^|, )listenerId = "workspace-internet-smtp"(?:,|\s*$)`)
 var smtpPort = regexp.MustCompile(`(?:^|, )localPort = 25(?:,|\s*$)`)
+var smtpQueued = regexp.MustCompile(`^\d{4}-\d\d-\d\dT[0-9:.]+Z INFO Queued message for delivery \(queue\.message-queued\) `)
+
+// Accepted Internet SMTP for a local mail domain is independent evidence when
+// the external checking service is unavailable. Retain only domain/time, never
+// sender, recipient, message IDs or content. Explicit failed probes still win.
+func (o *smtpObservation) observeReceipt(line string) {
+	loc := smtpQueued.FindStringIndex(line)
+	if loc == nil {
+		return
+	}
+	fields := line[loc[1]:]
+	peer := smtpPeer.FindStringSubmatch(fields)
+	if len(peer) != 2 || !smtpListener.MatchString(fields) || !smtpPort.MatchString(fields) || !publicMailIP(net.ParseIP(peer[1])) {
+		return
+	}
+	at, err := time.Parse(time.RFC3339Nano, strings.Fields(line)[0])
+	if err != nil || at.After(time.Now().Add(time.Second)) || time.Since(at) > 2*time.Hour {
+		return
+	}
+	start := strings.Index(fields, ", to = [")
+	if start < 0 {
+		return
+	}
+	var recipients []string
+	if json.NewDecoder(strings.NewReader(fields[start+7:])).Decode(&recipients) != nil {
+		return
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.receipts == nil {
+		o.receipts = map[string]time.Time{}
+	}
+	for domain, seen := range o.receipts {
+		if time.Since(seen) > 2*time.Hour {
+			delete(o.receipts, domain)
+		}
+	}
+	for _, recipient := range recipients {
+		index := strings.LastIndex(recipient, "@")
+		if index < 0 {
+			continue
+		}
+		domain := strings.ToLower(recipient[index+1:])
+		if !domainPattern.MatchString(domain) || len(o.receipts) >= 32 && o.receipts[domain].IsZero() {
+			continue
+		}
+		if at.After(o.receipts[domain]) {
+			o.receipts[domain] = at
+		}
+	}
+}
+
+func (o *smtpObservation) restoreReceipts(path string) {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	start := info.Size() - 256*1024
+	if start < 0 {
+		start = 0
+	}
+	b := make([]byte, info.Size()-start)
+	n, _ := f.ReadAt(b, start)
+	lines := strings.Split(string(b[:n]), "\n")
+	if start > 0 && len(lines) > 0 {
+		lines = lines[1:]
+	}
+	for _, line := range lines {
+		o.observeReceipt(line)
+	}
+}
+
+func (a *App) incomingReceiptStatus(state, domain string, help inboundHelp) (string, string, inboundHelp, bool) {
+	if state != "unverified" && state != "reachable" && state != "receiving" {
+		return state, "", help, false
+	}
+	if help.Code != "unverified" && help.Code != "reachable" && help.Code != "receiving" && help.Code != "upstream_router" && help.Code != "router_permission" {
+		return state, "", help, false
+	}
+	a.smtpObservation.mu.Lock()
+	at := a.smtpObservation.receipts[strings.ToLower(domain)]
+	a.smtpObservation.mu.Unlock()
+	if at.IsZero() || time.Since(at) > 2*time.Hour {
+		return state, "", help, false
+	}
+	message := "This server accepted Internet email for @" + domain + " at " + at.UTC().Format("2 Jan 2006 15:04 UTC") + ". Automatic connection checks continue. This does not guarantee future delivery or spam placement."
+	h := incomingHelp("receiving", nil)
+	if !help.NextCheck.IsZero() {
+		h.NextCheck = help.NextCheck
+	}
+	return "receiving", message, h, true
+}
 
 func (o *smtpObservation) observe(line string) {
+	o.observeReceipt(line)
 	loc := smtpStart.FindStringIndex(line)
 	if loc == nil {
 		return

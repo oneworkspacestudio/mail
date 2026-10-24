@@ -155,3 +155,15 @@ Synthetic correlation/router regression and isolated native bootstrap/reload
 checks passed; native fixture used named protected NTFS scratch with ephemeral
 loopback ports. No live MyAccounts/FileBrowser fixture was used. Publication and
 real two-PC deployment still pending at this source checkpoint.
+
+## Live25 follow-up: independent incoming receipt evidence
+Main79/Mail25 update completed healthy, but the external checker returned
+inconclusive results while a fresh authorized Gmail message was accepted through
+public SMTP. Connection metadata was enabled correctly; relying on one external
+checker still produced false repair guidance. Mail26 additionally uses bounded,
+recent native Internet-SMTP acceptance metadata for the exact configured domain,
+keeping only domain/time in memory and restoring a protected 256KiB log suffix
+after restart. Local submissions, another domain/receiver, old/future events and
+explicit current failed probes cannot clear warnings. No message content is used
+or transmitted. Real failed connections remain actionable. Both PCs still need
+final26/bundled80 deployment and end-to-end verification at this checkpoint.

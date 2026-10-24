@@ -142,7 +142,7 @@ async function repairIncoming(){
  }catch(e){if(b)b.disabled=false;const n=root.querySelector('.incoming-action-error');if(n)n.textContent=e.message;else throw e}
 }
 function incomingSetupCard(){
- const h=status.inboundHelp||{},checking=status.inboundState==='checking',healthy=['reachable','verified'].includes(status.inboundState);
+ const h=status.inboundHelp||{},checking=status.inboundState==='checking',healthy=['reachable','verified','receiving'].includes(status.inboundState);
  const card=el('section','incoming-setup');
  card.append(el('h3','',checking?'Checking the incoming connection…':h.title||'Incoming mail needs a connection'),el('p','',checking?'Mail is checking your router and repairing the rules it owns.':h.summary||'Your mailbox is ready. Mail is still checking whether incoming email can reach this server.'));
  if(checking){const progress=el('progress');progress.setAttribute('aria-label','Checking incoming mail');card.append(progress)}

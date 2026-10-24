@@ -53,8 +53,12 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 		a.mu.RLock()
 		c := a.cfg
 		previousState := a.inboundState
+		previousHelp := a.inboundHelp
 		chooseMain := a.hostingIssue != nil && a.hostingIssue.Code == "main_mail_available"
 		a.mu.RUnlock()
+		if effective, _, _, ok := a.incomingReceiptStatus(previousState, c.Domain, previousHelp); ok {
+			previousState = effective
+		}
 		delay := 5 * time.Minute
 		if c.MainMailURL != "" {
 			a.inboundProgress("shared", "Incoming mail is managed by the main Mail service.")
@@ -66,7 +70,7 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 		} else {
 			// Routine monitoring must not make a verified working service look
 			// broken while its next check is in progress.
-			if previousState != "verified" {
+			if previousState != "verified" && previousState != "receiving" {
 				a.inboundProgress("checking", "Checking router forwarding and public TCP25 reachability…")
 			}
 			attempt, cancel := context.WithTimeout(ctx, 90*time.Second)
@@ -90,14 +94,21 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 				}
 			}
 			cancel()
+			help := incomingHelp(state, routeErr)
+			if effective, message, receiptHelp, ok := a.incomingReceiptStatus(state, c.Domain, help); ok {
+				state, probeMessage, help, routeErr = effective, message, receiptHelp, nil
+			}
 			a.mu.Lock()
 			a.networkCancel = nil
 			if state == "verified" {
 				routeErr = nil
 			}
-			a.inboundHelp = incomingHelp(state, routeErr)
-			a.mu.Unlock()
 			if state == "verified" {
+				help = incomingHelp(state, nil)
+			}
+			a.inboundHelp = help
+			a.mu.Unlock()
+			if state == "verified" || state == "receiving" {
 				a.inboundProgress(state, probeMessage)
 			} else if state == "reachable" && routeErr == nil {
 				a.inboundProgress(state, probeMessage+" "+routeMessage)

@@ -54,6 +54,11 @@ func (a *App) status(w http.ResponseWriter, r *http.Request) {
 	inboundState, inboundMessage := a.inboundState, a.inboundMessage
 	help := a.inboundHelp
 	a.mu.RUnlock()
+	if c.MainMailURL == "" {
+		if effective, message, receiptHelp, ok := a.incomingReceiptStatus(inboundState, c.Domain, help); ok {
+			inboundState, inboundMessage, help = effective, message, receiptHelp
+		}
+	}
 	if c.MainMailURL != "" {
 		hostingBusy = false
 		hostingError = ""

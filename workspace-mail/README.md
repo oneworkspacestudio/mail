@@ -292,3 +292,9 @@ content or credentials are sent to the checking service. Only the public SMTP
 hostname is shared with Check-Host. This verifies connectivity, not message
 delivery or spam placement. Router permissions and ISP blocks may still require
 the network owner's help when a connection really cannot be established.
+
+If the external checker is unavailable, Mail also recognises Internet SMTP
+recently accepted for this mail domain. It retains only the domain and time,
+keeps working router settings, and continues automatic checks. This evidence
+expires after two hours; explicit current connection failures stay visible.
+Messages, credentials and account data are never sent to the checking service.
