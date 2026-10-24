@@ -178,3 +178,52 @@ avoids a false warning returning merely because an external checker stays down.
 Secondary79 local updater confirmed healthy completion (22m35s); public tunnel
 reconnection is checked separately. Workspace80 remains an unpublished build and
 will be rebuilt with final27 before its tag is created.
+
+## Final public release and deployment running
+Mail27 source37287b10 and Workspace80 source75251e9 are public with every asset
+size/SHA256 verified, no Actions. Workspace public channel promotionf666d91 was
+verified anonymously for80/27. Both current79/Mail25 PCs accepted exactly one
+normal workspace+mail80/27 transaction. Main started2026-10-24T11:05:55Z; secondary
+started shortly afterward. Do not replay either apply on tunnel disconnect.
+Main is backing up; secondary downloads/checks. Earlier79 completed on both
+(main10m18s, secondary22m35s); secondary tunnel returned afterward. RDP temporary
+on-screen input is restored off, Run/temporary shell closed. Named C build/native
+scratch is removed. Need final80/27 completion, main installed hashes/preserved
+other binaries, fresh Mail UI without repair guidance, stable Advanced across
+polling, shared-secondary entry and Gmail round trip before claiming completion.
+A labelled Gmail test reached main Mail25 at10:35UTC despite inconclusive checker;
+its native acceptance supplies recent evidence for27's protected startup restore.
+No test body, credentials, capability or OAuth artifacts are copied here.
+
+## Completed80/27 deployment and verification
+Both PCs completed their normal backed-up Workspace80 + Mail27 updates healthy.
+Main completed in8m41s; secondary in15m39s. Latest usable rollback retained on each;
+one prior automatic copy removed (~4420.1MB main /3395.3MB secondary). Main installed
+manager/Mail hashes match public release bytes. Other25 app records and their
+referenced binaries match the pre-task snapshot, including the custom Drive.
+Main C free space was about18GiB; all named task native/build scratch is removed.
+Unknown failed/recovery data, scheduled backups and user files were preserved.
+
+Main27 automatically reached verified state from a successful external node
+matched to its own public SMTP connection. Browser settings show Incoming
+connection verified, with no Repair/router warning or stale raw error. Advanced
+and Connection details stayed expanded across the next real periodic check
+(next-check time advanced). Fresh main Inbox opened signed in as the real owner.
+A new authorised Gmail message arrived with its expected test content; Mail's
+reply used the proper canonical address and was received/opened in Gmail.
+
+After secondary completion/tunnel return, its normal Mail entry automatically
+handed to the main Inbox, signed in, and opened the same final verification
+message without a warning. Its Mail settings also show the verified main status.
+A fresh secondary update check reports installed Workspace80 and Mail27 up to
+date. Shared main setting persists; no local engine/router setup or independent
+identity/mailbox migration was introduced. RDP input preference is restored off.
+No passwords or new router rules were changed in this task. The earlier known
+other-app metadata review issue remains outside this Mail change.
+
+Final public artifacts: Mail27 source37287b10, Workspace80 source75251e9; promoted
+channelf666d91 verified anonymously. All builds/publications local, Actions
+disabled. Final27 synthetic correlation/receipt/uncertainty/router checks and
+isolated NTFS native bootstrap/reload pass. No clean-host, physical reboot,
+arbitrary-router/provider, mobile or production acceptance is claimed. There is
+no remaining required80/27 implementation/publication/deployment work.
