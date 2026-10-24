@@ -118,3 +118,23 @@ unavailable inspection from public SMTP response and actual delivery, tells user
 to keep working settings when mail arrives, and uses that guidance in the Inbox
 warning. No route, credential, auth or delivery logic changes. JS syntax passed;
 Windows build, publication/promotion and final deployment remain to complete.
+
+
+## Final deployment and shared-service verification
+Mail24 a42e9df0 is public and promoted. Workspace78 includes it in the offline
+bundle and online distribution. Both real PCs completed normal backed-up updates
+to manager78/Mail24 and reported healthy. Shared main URL persisted through manager
+updates; normal secondary Mail entry opened the main Inbox automatically. Existing
+local messages/settings were retained, not migrated; independent identities were
+not merged. Main receiver's approved outer TCP25 route and matching eero address
+reservation are saved; other receiver rules were preserved.
+A fresh Gmail -> Mail -> Gmail round trip passed after both78 deployments. Exact
+labelled test content was checked in both interfaces, with no bodies/artifacts
+copied here. Main installed24 bytes match the public verified artifact. Advanced
+stayed expanded across live network status changes. Router inspection still cannot
+traverse this upstream hop;24 accurately distinguishes that from working delivery.
+No passwords changed. C task build scratch/controller logs removed; current data
+and newest verified rollback kept. Source/public channel/installer integration is
+complete. See Workspace's October24 concurrent-sign-in handoff for the separate
+portal-cookie collision found during final checking and fixed in manager78.
+No clean-host, physical reboot, arbitrary-provider/router or production claim.
