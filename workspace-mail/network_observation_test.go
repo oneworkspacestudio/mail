@@ -73,6 +73,27 @@ func TestVerifiedIncomingHelp(t *testing.T) {
 	}
 }
 
+func TestInconclusiveIncomingHelp(t *testing.T) {
+	for _, state := range []string{"unverified", "reachable"} {
+		h := incomingHelp(state, &inboundRouteIssue{Code: "upstream_router", Router: "192.168.1.1"})
+		if h.Code != "check_unavailable" && h.Code != "receiver_unverified" {
+			t.Fatalf("uncertainty became a repair error: %+v", h)
+		}
+		if strings.Contains(h.Summary, "must") || strings.Contains(h.Summary, "Repair connection") {
+			t.Fatal("unproven repair requirement")
+		}
+	}
+	for _, code := range []string{"other_mail_server", "dns_pending"} {
+		h := incomingHelp("unverified", &inboundRouteIssue{Code: code})
+		if h.Code != code {
+			t.Fatal("lost actionable conflict")
+		}
+	}
+	if h := incomingHelp("attention", &inboundRouteIssue{Code: "upstream_router"}); h.Code != "upstream_router" {
+		t.Fatal("hid explicit connection failure")
+	}
+}
+
 func TestIncomingReceiptEvidence(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	line := now.Format(time.RFC3339) + ` INFO Queued message for delivery (queue.message-queued) listenerId = "workspace-internet-smtp", localPort = 25, remoteIp = 8.8.8.8, remotePort = 40000, queueId = 123, from = "sender@example.test", to = ["person@example.test"], size = 1000`

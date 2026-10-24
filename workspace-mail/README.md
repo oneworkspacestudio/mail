@@ -298,3 +298,8 @@ recently accepted for this mail domain. It retains only the domain and time,
 keeps working router settings, and continues automatic checks. This evidence
 expires after two hours; explicit current connection failures stay visible.
 Messages, credentials and account data are never sent to the checking service.
+
+Inconclusive checks appear as monitoring information, with Check again and
+automatic recognition of test messages. They do not show a broken-connection
+banner or demand router repairs. Actual failed probes and known conflicting
+receivers remain visible; owner router controls stay under Connection details.

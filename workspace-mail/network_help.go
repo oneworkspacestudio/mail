@@ -77,6 +77,19 @@ func incomingHelp(state string, err error) inboundHelp {
 			help.Summary = "Mail is waiting for public DNS to match this connection. It will retry automatically."
 		}
 	}
+	// Inability to inspect a router or obtain a conclusive external result is
+	// uncertainty, not evidence of a broken route. Keep this informational;
+	// real failed probes and known conflicting receivers remain actionable.
+	if state == "unverified" && (err == nil || issue != nil && (issue.Code == "upstream_router" || issue.Code == "router_permission")) {
+		help.Code = "check_unavailable"
+		help.Title = "Incoming mail is being monitored"
+		help.Summary = "The external connection check is temporarily inconclusive. Your mailbox remains available and Mail will recognise incoming email automatically. Existing router settings are preserved."
+		if publicResponds {
+			help.Code = "receiver_unverified"
+			help.Title = "Waiting to confirm this Mail server"
+			help.Summary = "Public SMTP is responding. Mail is checking that incoming email reaches this server. It will recognise incoming messages automatically and keep your existing router settings."
+		}
+	}
 	help.NextCheck = time.Now().UTC().Add(5 * time.Minute)
 	return help
 }

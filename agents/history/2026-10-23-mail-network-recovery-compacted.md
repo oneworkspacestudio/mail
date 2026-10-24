@@ -167,3 +167,14 @@ after restart. Local submissions, another domain/receiver, old/future events and
 explicit current failed probes cannot clear warnings. No message content is used
 or transmitted. Real failed connections remain actionable. Both PCs still need
 final26/bundled80 deployment and end-to-end verification at this checkpoint.
+
+Mail27 completes the uncertainty UI: inconclusive checks/unavailable router
+inspection are informational, not a repair alarm. Unknown external service state
+shows Check again and automatic test-message recognition; technical router
+controls remain under Connection details. Inbox does not show a broken-connection
+banner for uncertainty alone, including after receipt evidence expires. Explicit
+failed probes, known other receivers and DNS conflicts remain actionable. This
+avoids a false warning returning merely because an external checker stays down.
+Secondary79 local updater confirmed healthy completion (22m35s); public tunnel
+reconnection is checked separately. Workspace80 remains an unpublished build and
+will be rebuilt with final27 before its tag is created.

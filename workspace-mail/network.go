@@ -115,9 +115,13 @@ func (a *App) maintainInboundMail(ctx context.Context) {
 			} else if routeErr != nil {
 				if state == "reachable" {
 					state = "unverified"
-					probeMessage = "Public TCP25 responds, but routing to this PC has not been confirmed. Review the router rule before expecting delivery."
+					probeMessage = "Public SMTP responds. This server has not yet matched the external check; incoming email can confirm the working route automatically."
 				}
-				a.inboundProgress(state, routeErr.Error()+" "+probeMessage)
+				if help.Code == "check_unavailable" || help.Code == "receiver_unverified" {
+					a.inboundProgress(state, probeMessage+" Automatic router inspection is unavailable; existing settings are preserved.")
+				} else {
+					a.inboundProgress(state, routeErr.Error()+" "+probeMessage)
+				}
 			} else {
 				a.inboundProgress(state, routeMessage+" "+probeMessage)
 			}

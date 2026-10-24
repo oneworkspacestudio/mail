@@ -110,7 +110,7 @@ func (a *App) incomingReceiptStatus(state, domain string, help inboundHelp) (str
 	if state != "unverified" && state != "reachable" && state != "receiving" {
 		return state, "", help, false
 	}
-	if help.Code != "unverified" && help.Code != "reachable" && help.Code != "receiving" && help.Code != "upstream_router" && help.Code != "router_permission" {
+	if help.Code != "unverified" && help.Code != "reachable" && help.Code != "receiving" && help.Code != "check_unavailable" && help.Code != "receiver_unverified" && help.Code != "upstream_router" && help.Code != "router_permission" {
 		return state, "", help, false
 	}
 	a.smtpObservation.mu.Lock()
